@@ -5,7 +5,6 @@ endif(COMMAND cmake_policy)
 
 project(CNPY)
 
-set(CMAKE_INSTALL_PREFIX $ENV{HOME})
 option(ENABLE_STATIC "Build static (.a) library" ON)
 
 ADD_LIBRARY(cnpy SHARED "cnpy.cpp")
