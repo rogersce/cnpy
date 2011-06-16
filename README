@@ -1,6 +1,10 @@
+Purpose:
+
+Numpy offers the save method for easy saving of arrays into .npy and savez for zipping multiple .npy arrays together into a .npz file. cnpy lets you read and write to these formats in C++. The motivation comes from scientific programming where large amounts of data are generated in C++ and analyzed in Python. Writing to .npy has the advantage of using low-level C++ I/O (fread and fwrite) for speed and binary format for size. The .npy file header takes care of specifying the size, shape, and data type of the array, so specifying the format of the data is unnecessary. Loading data written in numpy formats into C++ is equally simple, but requires you to type-cast the loaded data to the type of your choice.
+
 Installation:
 
-Default installation directory is /usr/local. To specifya different directory, add -DCMAKE_INSTALL_PREFIX=/path/to/install/dir to cmake invocation in step 4.
+Default installation directory is /usr/local. To specify a different directory, add -DCMAKE_INSTALL_PREFIX=/path/to/install/dir to the cmake invocation in step 4.
 
 1. get cmake at www.cmake.org
 2. create a build directory, say $HOME/build
@@ -9,19 +13,18 @@ Default installation directory is /usr/local. To specifya different directory, a
 5. make
 6. make install
 
+Using:
+
+To use, #include"cnpy.h" in your source code. Compile the source code mycode.cpp as
+
+g++ -o mycode mycode.cpp -L/path/to/install/dir -lcnpy
+
 Description:
 
 There are two functions for writing data: npy_save, npz_save.
 
-template<typename T> void npy_save(std::string fname, const T* data, const unsigned int* shape, const unsigned int ndims, std::string mode = "w") {
-template<typename T> void npz_save(std::string zipname, std::string fname, const T* data, const unsigned int* shape, const unsigned int ndims, std::string mode = "w")
-
 There are 3 functions for reading. npy_load will load a .npy file. npz_load(fname) will load a .npz and return a dictionary of NpyArray structues. npz_load(fname,varname) will load and return the NpyArray for data varname from the specified .npz file.
 Note that NpyArray allocates char* data using new[] and *will not* delete the data upon the NpyArray destruction. You are responsible for delete the data yourself.
-
-std::map<std::string,cnpy::NpyArray> cnpy::npz_load(std::string fname)
-cnpy::NpyArray cnpy::npz_load(std::string fname, std::string varname) 
-cnpy::NpyArray cnpy::npy_load(std::string fname)
 
 The data structure for loaded data is below. Data is loaded into a a raw byte array. The array shape and word size are read from the npy header. You are responsible for casting/copying the data to its intended data type.
 
@@ -31,40 +34,4 @@ struct NpyArray {
     unsigned int word_size;
 };
 
-
-Usage examples:
-
-//Write a npy file 
-int nx = 10, ny = 20;
-complex<double>* my_arr = new complex<double>[nx*ny];
-const unsigned int shape[] = {ny,nx}; //cnpy assumes "row-major" data, so list the most quickly varying index last!
-cnpy::npy_save("my_arr.npy",my_arr,shape,2,"w"); //"w" will overwrite an existing my_arr.npy file
-
-//Append to a npy file
-//If the shape of my_arr.npy is currently (n0,n1) and my_append has shape (ny,nx)
-//then after appending, my_arry.npy will have shape (n0+ny,nx)
-int nx = 10, ny = 20;
-float* my_append = new float[nx*ny];
-const unsigned int shape[] = {ny,nx};
-cnpy::npy_save("my_arr.npy",my_append,shape,2,"a"); 
-
-//Write an npz file with mixed data
-int x = 1;
-const unsigned int y_shape[] = {1};
-cnpy::npz_save("params.npz","x",&EQUIL,shape,1,"w"); //"w" overwrites any existing file
-
-double y = 2;
-const unsigned int y_shape[] = {1};
-cnpy::npz_save("params.npz","y",&EQUIL,shape,1,"a"); //"a" appends to existing file
-
-int nx = 10, ny = 20;
-float* my_arr = new float[nx*ny];
-const unsigned int z_shape[] = {ny,nx}; 
-cnpy::npz_save("params.npz","my_arr",my_arr,shape,2,"a");
-
-//Load an npy file
-NpyArray my_arr = npy_load("my_arr.npy");
-float* data = reinterpret_cast<float*>(my_arr.data);
-assert(my_arr.word_size == sizeof(float)) 
-delete[] data; //you are always responsible for deleting the allocated data
-
+See example1.cpp for examples of how to use the library. example1 will also be build during cmake installation.
