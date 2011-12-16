@@ -120,7 +120,7 @@ cnpy::NpyArray load_the_npy_file(FILE* fp) {
     unsigned int* shape;
     unsigned int ndims, word_size;
     cnpy::parse_npy_header(fp,word_size,shape,ndims);
-    unsigned int size = 1;
+    unsigned long long size = 1; //long long so no overflow when multiplying by word_size
     for(int i = 0;i < ndims;i++) size *= shape[i];
 
     cnpy::NpyArray arr;
