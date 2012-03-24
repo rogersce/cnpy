@@ -22,6 +22,8 @@ namespace cnpy {
         std::vector<unsigned int> shape;
         unsigned int word_size;
     };
+    
+    typedef std::map<std::string,NpyArray> npz_t;
 
     char BigEndianTest();
     char map_type(const std::type_info& t);
