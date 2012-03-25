@@ -45,8 +45,7 @@ int main()
     cnpy::NpyArray arr2 = cnpy::npz_load("out.npz","arr1");
 
     //load the entire npz file
-    typedef std::map<std::string,cnpy::NpyArray> npz_t;
-    npz_t my_npz = cnpy::npz_load("out.npz");
+    cnpy::npz_t my_npz = cnpy::npz_load("out.npz");
     
     //check that the loaded myVar1 matches myVar1
     cnpy::NpyArray arr_mv1 = my_npz["myVar1"];
@@ -55,14 +54,8 @@ int main()
     assert(mv1[0] == myVar1);
 
     //cleanup: note that we are responsible for deleting all loaded data
-
-    //delete the map of NpyArrays
-    for(npz_t::iterator it = my_npz.begin(); it != my_npz.end(); ++it)
-    {
-        delete[] (*it).second.data;
-    }
-
-    delete[] arr2.data;
-    delete[] loaded_data;
     delete[] data;
+    delete[] loaded_data;
+    arr2.destruct();
+    my_npz.destruct();
 }

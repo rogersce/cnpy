@@ -21,15 +21,23 @@ namespace cnpy {
         char* data;
         std::vector<unsigned int> shape;
         unsigned int word_size;
+        void destruct() {delete[] data;}
     };
     
-    typedef std::map<std::string,NpyArray> npz_t;
+    struct npz_t : public std::map<std::string, NpyArray>
+    {
+        void destruct()
+        {
+            npz_t::iterator it = this->begin();
+            for(; it != this->end(); ++it) (*it).second.destruct();
+        }
+    };
 
     char BigEndianTest();
     char map_type(const std::type_info& t);
     void parse_npy_header(FILE* fp,unsigned int& word_size, unsigned int*& shape, unsigned int& ndims);
     void parse_zip_footer(FILE* fp, unsigned short& nrecs, unsigned int& global_header_size, unsigned int& global_header_offset);
-    std::map<std::string,NpyArray> npz_load(std::string fname);
+    npz_t npz_load(std::string fname);
     NpyArray npz_load(std::string fname, std::string varname);
     NpyArray npy_load(std::string fname);
 

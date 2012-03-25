@@ -131,13 +131,13 @@ cnpy::NpyArray load_the_npy_file(FILE* fp) {
     return arr;
 }
 
-std::map<std::string,cnpy::NpyArray> cnpy::npz_load(std::string fname) {
+cnpy::npz_t cnpy::npz_load(std::string fname) {
     FILE* fp = fopen(fname.c_str(),"rb");
 
     if(!fp) printf("npz_load: Error! Unable to open file %s!\n",fname.c_str());
     assert(fp);
 
-    std::map<std::string,NpyArray> arrays;  
+    cnpy::npz_t arrays;  
 
     while(1) {
         std::vector<char> local_header(30);
