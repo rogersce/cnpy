@@ -83,8 +83,10 @@ void cnpy::parse_npy_header(FILE* fp, unsigned int& word_size, unsigned int*& sh
     }
 
     //endian, word size, data type
+    //byte order code | stands for not applicable. 
+    //not sure when this applies except for byte array
     loc1 = header.find("descr")+9;
-    bool littleEndian = (header[loc1] == '<' ? true : false);
+    bool littleEndian = (header[loc1] == '<' || header[loc1] == '|' ? true : false);
     assert(littleEndian);
 
     char type = header[loc1+1];
