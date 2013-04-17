@@ -6,6 +6,7 @@
 #define LIBCNPY_H_
 
 #include<string>
+#include<stdexcept>
 #include<sstream>
 #include<vector>
 #include<cstdio>
@@ -131,7 +132,10 @@ namespace cnpy {
             parse_zip_footer(fp,nrecs,global_header_size,global_header_offset);
             fseek(fp,global_header_offset,SEEK_SET);
             global_header.resize(global_header_size);
-            fread(&global_header[0],sizeof(char),global_header_size,fp);
+            size_t res = fread(&global_header[0],sizeof(char),global_header_size,fp);
+            if(res != global_header_size){
+                throw std::runtime_error("npz_save: header read error while adding to existing zip");
+            }
             fseek(fp,global_header_offset,SEEK_SET);
         }
         else {
