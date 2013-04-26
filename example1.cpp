@@ -17,7 +17,7 @@ int main()
 
     //save it to file
     const unsigned int shape[] = {Nz,Ny,Nx};
-    cnpy::npy_save("arr1.npy",data,shape,3,"w");
+    cnpy::npy_save("arr1.npy",data,shape,3,"w","F"); // Save with Fortran order
 
     //load it into a new array
     cnpy::NpyArray arr = cnpy::npy_load("arr1.npy");
@@ -30,16 +30,16 @@ int main()
 
     //append the same data to file
     //npy array on file now has shape (Nz+Nz,Ny,Nx)
-    cnpy::npy_save("arr1.npy",data,shape,3,"a");
+    cnpy::npy_save("arr1.npy",data,shape,3,"a","C"); // Save with C order
 
     //now write to an npz file
     //non-array variables are treated as 1D arrays with 1 element
     double myVar1 = 1.2;
     char myVar2 = 'a';
     unsigned int shape2[] = {1};
-    cnpy::npz_save("out.npz","myVar1",&myVar1,shape2,1,"w"); //"w" overwrites any existing file
-    cnpy::npz_save("out.npz","myVar2",&myVar2,shape2,1,"a"); //"a" appends to the file we created above
-    cnpy::npz_save("out.npz","arr1",data,shape,3,"a"); //"a" appends to the file we created above
+    cnpy::npz_save("out.npz","myVar1",&myVar1,shape2,1,"w", "C"); //"w" overwrites any existing file
+    cnpy::npz_save("out.npz","myVar2",&myVar2,shape2,1,"a", "C"); //"a" appends to the file we created above
+    cnpy::npz_save("out.npz","arr1",data,shape,3,"a", "C"); //"a" appends to the file we created above
 
     //load a single var from the npz file
     cnpy::NpyArray arr2 = cnpy::npz_load("out.npz","arr1");
