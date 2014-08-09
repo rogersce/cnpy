@@ -10,9 +10,8 @@
 #include<iomanip>
 
 char cnpy::BigEndianTest() {
-    unsigned char x[] = {1,0};
-    short y = *(short*) x;
-    return y == 1 ? '<' : '>';
+    int x = 1;
+    return (((char *)&x)[0]) ? '<' : '>';
 }
 
 char cnpy::map_type(const std::type_info& t)
