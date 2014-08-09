@@ -37,7 +37,7 @@ namespace cnpy {
 
     char BigEndianTest();
     char map_type(const std::type_info& t);
-    template<typename T> std::vector<char> create_npy_header(const T* data, const unsigned int* shape, const unsigned int ndims);
+    template<typename T> std::vector<char> create_npy_header(const unsigned int* shape, const unsigned int ndims);
     void parse_npy_header(FILE* fp,unsigned int& word_size, unsigned int*& shape, unsigned int& ndims, bool& fortran_order);
     void parse_zip_footer(FILE* fp, unsigned short& nrecs, unsigned int& global_header_size, unsigned int& global_header_offset);
     npz_t npz_load(std::string fname);
@@ -57,7 +57,7 @@ namespace cnpy {
     template<> std::vector<char>& operator+=(std::vector<char>& lhs, const char* rhs); 
 
 
-    template<typename T> std::string tostring(T i, int pad = 0, char padval = ' ') {
+    template<typename T> std::string tostring(T i) {
         std::stringstream s;
         s << i;
         return s.str();
@@ -94,7 +94,7 @@ namespace cnpy {
             tmp_shape[0] += shape[0];
 
             fseek(fp,0,SEEK_SET);
-            std::vector<char> header = create_npy_header(data,tmp_shape,ndims);
+            std::vector<char> header = create_npy_header<T>(tmp_shape,ndims);
             fwrite(&header[0],sizeof(char),header.size(),fp);
             fseek(fp,0,SEEK_END);
 
@@ -102,7 +102,7 @@ namespace cnpy {
         }
         else {
             fp = fopen(fname.c_str(),"wb");
-            std::vector<char> header = create_npy_header(data,shape,ndims);
+            std::vector<char> header = create_npy_header<T>(shape,ndims);
             fwrite(&header[0],sizeof(char),header.size(),fp);
         }
 
@@ -145,7 +145,7 @@ namespace cnpy {
             fp = fopen(zipname.c_str(),"wb");
         }
 
-        std::vector<char> npy_header = create_npy_header(data,shape,ndims);
+        std::vector<char> npy_header = create_npy_header<T>(shape,ndims);
 
         unsigned long nels = 1;
         for (int m=0; m<ndims; m++ ) nels *= shape[m];
@@ -204,7 +204,7 @@ namespace cnpy {
         fclose(fp);
     }
 
-    template<typename T> std::vector<char> create_npy_header(const T* data, const unsigned int* shape, const unsigned int ndims) {  
+    template<typename T> std::vector<char> create_npy_header(const unsigned int* shape, const unsigned int ndims) {  
 
         std::vector<char> dict;
         dict += "{'descr': '";
