@@ -30,8 +30,8 @@ The data structure for loaded data is below. Data is loaded into a a raw byte ar
 
 struct NpyArray {
     char* data;
-    std::vector<unsigned int> shape;
-    unsigned int word_size;
+    std::vector<size_t> shape;
+    size_t word_size;
 };
 
 See example1.cpp for examples of how to use the library. example1 will also be build during cmake installation.
