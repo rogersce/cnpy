@@ -218,6 +218,18 @@ namespace cnpy {
         fclose(fp);
     }
 
+    template<typename T> void npy_save(std::string fname, const std::vector<T> data, std::string mode = "w") {
+        std::vector<size_t> shape;
+        shape.push_back(data.size());
+        npy_save(fname, &data[0], shape, mode);
+    }
+
+    template<typename T> void npz_save(std::string zipname, std::string fname, const std::vector<T> data, std::string mode = "w") {
+        std::vector<size_t> shape;
+        shape.push_back(data.size());
+        npz_save(zipname, fname, &data[0], shape, mode);
+    }
+
     template<typename T> std::vector<char> create_npy_header(const std::vector<size_t>& shape) {  
 
         std::vector<char> dict;

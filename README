@@ -17,7 +17,7 @@ Using:
 
 To use, #include"cnpy.h" in your source code. Compile the source code mycode.cpp as
 
-g++ -o mycode mycode.cpp -L/path/to/install/dir -lcnpy
+g++ -o mycode mycode.cpp -L/path/to/install/dir -lcnpy --std=c++11
 
 Description:
 
