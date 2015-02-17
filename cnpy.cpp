@@ -133,6 +133,7 @@ cnpy::NpyArray load_the_npy_file(FILE* fp) {
     cnpy::NpyArray arr;
     arr.word_size = word_size;
     arr.shape = std::vector<unsigned int>(shape,shape+ndims);
+    delete[] shape;
     arr.data = new char[size*word_size];    
     arr.fortran_order = fortran_order;
     size_t nread = fread(arr.data,word_size,size,fp);
