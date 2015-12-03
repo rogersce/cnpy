@@ -25,7 +25,7 @@ namespace cnpy {
         bool fortran_order;
         void destruct() {delete[] data;}
     };
-    
+
     struct npz_t : public std::map<std::string, NpyArray>
     {
         void destruct()
@@ -46,15 +46,15 @@ namespace cnpy {
 
     template<typename T> std::vector<char>& operator+=(std::vector<char>& lhs, const T rhs) {
         //write in little endian
-        for(char byte = 0; byte < sizeof(T); byte++) {
-            char val = *((char*)&rhs+byte); 
+        for(unsigned char byte = 0; byte < sizeof(T); byte++) {
+            char val = *((char*)&rhs+byte);
             lhs.push_back(val);
         }
         return lhs;
     }
 
-    template<> std::vector<char>& operator+=(std::vector<char>& lhs, const std::string rhs); 
-    template<> std::vector<char>& operator+=(std::vector<char>& lhs, const char* rhs); 
+    template<> std::vector<char>& operator+=(std::vector<char>& lhs, const std::string rhs);
+    template<> std::vector<char>& operator+=(std::vector<char>& lhs, const char* rhs);
 
 
     template<typename T> std::string tostring(T i, int pad = 0, char padval = ' ') {
@@ -85,7 +85,7 @@ namespace cnpy {
                 assert(tmp_dims == ndims);
             }
 
-            for(int i = 1; i < ndims; i++) {
+            for(unsigned int i = 1; i < ndims; i++) {
                 if(shape[i] != tmp_shape[i]) {
                     std::cout<<"libnpy error: npy_save attempting to append misshaped data to "<<fname<<"\n";
                     assert(shape[i] == tmp_shape[i]);
@@ -107,7 +107,7 @@ namespace cnpy {
         }
 
         unsigned int nels = 1;
-        for(int i = 0;i < ndims;i++) nels *= shape[i];
+        for(unsigned int i = 0;i < ndims;i++) nels *= shape[i];
 
         fwrite(data,sizeof(T),nels,fp);
         fclose(fp);
@@ -129,7 +129,7 @@ namespace cnpy {
         if(fp) {
             //zip file exists. we need to add a new npy file to it.
             //first read the footer. this gives us the offset and size of the global header
-            //then read and store the global header. 
+            //then read and store the global header.
             //below, we will write the the new data at the start of the global header then append the global header and footer below it
             unsigned int global_header_size;
             parse_zip_footer(fp,nrecs,global_header_size,global_header_offset);
@@ -195,7 +195,7 @@ namespace cnpy {
         footer += (unsigned int) (global_header_offset + nbytes + local_header.size()); //offset of start of global headers, since global header now starts after newly written array
         footer += (unsigned short) 0; //zip file comment length
 
-        //write everything      
+        //write everything
         fwrite(&local_header[0],sizeof(char),local_header.size(),fp);
         fwrite(&npy_header[0],sizeof(char),npy_header.size(),fp);
         fwrite(data,sizeof(T),nels,fp);
@@ -204,7 +204,7 @@ namespace cnpy {
         fclose(fp);
     }
 
-    template<typename T> std::vector<char> create_npy_header(const T* data, const unsigned int* shape, const unsigned int ndims) {  
+    template<typename T> std::vector<char> create_npy_header(const T* data, const unsigned int* shape, const unsigned int ndims) {
 
         std::vector<char> dict;
         dict += "{'descr': '";
@@ -213,7 +213,7 @@ namespace cnpy {
         dict += tostring(sizeof(T));
         dict += "', 'fortran_order': False, 'shape': (";
         dict += tostring(shape[0]);
-        for(int i = 1;i < ndims;i++) {
+        for(unsigned int i = 1;i < ndims;i++) {
             dict += ", ";
             dict += tostring(shape[i]);
         }
