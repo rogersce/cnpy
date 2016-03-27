@@ -62,6 +62,10 @@ void cnpy::parse_npy_header(FILE* fp, unsigned int& word_size, unsigned int*& sh
     size_t res = fread(buffer,sizeof(char),11,fp);       
     if(res != 11)
         throw std::runtime_error("parse_npy_header: failed fread");
+    
+    if (strncmp(buffer, "\x93NUMPY", 6) != 0)
+        throw std::runtime_error("parse_npy_header: unsupported numpy format");
+    
     std::string header = fgets(buffer,256,fp);
     assert(header[header.size()-1] == '\n');
 
