@@ -53,10 +53,8 @@ namespace cnpy {
         bool fortran_order;
         size_t num_vals;
     };
-    
-    struct npz_t : public std::map<std::string, NpyArray>
-    {
-    };
+   
+    using npz_t = std::map<std::string, NpyArray>; 
 
     char BigEndianTest();
     char map_type(const std::type_info& t);
@@ -79,12 +77,6 @@ namespace cnpy {
     template<> std::vector<char>& operator+=(std::vector<char>& lhs, const std::string rhs); 
     template<> std::vector<char>& operator+=(std::vector<char>& lhs, const char* rhs); 
 
-
-    template<typename T> std::string tostring(T i) {
-        std::stringstream s;
-        s << i;
-        return s.str();
-    }
 
     template<typename T> void npy_save(std::string fname, const T* data, const std::vector<size_t> shape, std::string mode = "w") {
         FILE* fp = NULL;
@@ -243,12 +235,12 @@ namespace cnpy {
         dict += "{'descr': '";
         dict += BigEndianTest();
         dict += map_type(typeid(T));
-        dict += tostring(sizeof(T));
+        dict += std::to_string(sizeof(T));
         dict += "', 'fortran_order': False, 'shape': (";
-        dict += tostring(shape[0]);
+        dict += std::to_string(shape[0]);
         for(size_t i = 1;i < shape.size();i++) {
             dict += ", ";
-            dict += tostring(shape[i]);
+            dict += std::to_string(shape[i]);
         }
         if(shape.size() == 1) dict += ",";
         dict += "), }";
