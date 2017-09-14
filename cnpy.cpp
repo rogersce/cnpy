@@ -8,11 +8,11 @@
 #include<algorithm>
 #include<cstring>
 #include<iomanip>
+#include<stdint.h>
 
 char cnpy::BigEndianTest() {
-    unsigned char x[] = {1,0};
-    short y = *(short*) x;
-    return y == 1 ? '<' : '>';
+    int x = 1;
+    return (((char *)&x)[0]) ? '<' : '>';
 }
 
 char cnpy::map_type(const std::type_info& t)
@@ -57,7 +57,7 @@ template<> std::vector<char>& cnpy::operator+=(std::vector<char>& lhs, const cha
     return lhs;
 }
 
-void cnpy::parse_npy_header(FILE* fp, unsigned int& word_size, unsigned int*& shape, unsigned int& ndims, bool& fortran_order) {  
+void cnpy::parse_npy_header(FILE* fp, size_t& word_size, std::vector<size_t>& shape, bool& fortran_order) {  
     char buffer[256];
     size_t res = fread(buffer,sizeof(char),11,fp);       
     if(res != 11)
@@ -75,10 +75,11 @@ void cnpy::parse_npy_header(FILE* fp, unsigned int& word_size, unsigned int*& sh
     loc1 = header.find("(");
     loc2 = header.find(")");
     std::string str_shape = header.substr(loc1+1,loc2-loc1-1);
+    size_t ndims;
     if(str_shape[str_shape.size()-1] == ',') ndims = 1;
     else ndims = std::count(str_shape.begin(),str_shape.end(),',')+1;
-    shape = new unsigned int[ndims];
-    for(unsigned int i = 0;i < ndims;i++) {
+    shape.resize(ndims);
+    for(size_t i = 0;i < ndims;i++) {
         loc1 = str_shape.find(",");
         shape[i] = atoi(str_shape.substr(0,loc1).c_str());
         str_shape = str_shape.substr(loc1+1);
@@ -99,7 +100,7 @@ void cnpy::parse_npy_header(FILE* fp, unsigned int& word_size, unsigned int*& sh
     word_size = atoi(str_ws.substr(0,loc2).c_str());
 }
 
-void cnpy::parse_zip_footer(FILE* fp, unsigned short& nrecs, unsigned int& global_header_size, unsigned int& global_header_offset)
+void cnpy::parse_zip_footer(FILE* fp, uint16_t& nrecs, size_t& global_header_size, size_t& global_header_offset)
 {
     std::vector<char> footer(22);
     fseek(fp,-22,SEEK_END);
@@ -107,14 +108,14 @@ void cnpy::parse_zip_footer(FILE* fp, unsigned short& nrecs, unsigned int& globa
     if(res != 22)
         throw std::runtime_error("parse_zip_footer: failed fread");
 
-    unsigned short disk_no, disk_start, nrecs_on_disk, comment_len;
-    disk_no = *(unsigned short*) &footer[4];
-    disk_start = *(unsigned short*) &footer[6];
-    nrecs_on_disk = *(unsigned short*) &footer[8];
-    nrecs = *(unsigned short*) &footer[10];
-    global_header_size = *(unsigned int*) &footer[12];
-    global_header_offset = *(unsigned int*) &footer[16];
-    comment_len = *(unsigned short*) &footer[20];
+    uint16_t disk_no, disk_start, nrecs_on_disk, comment_len;
+    disk_no = *(uint16_t*) &footer[4];
+    disk_start = *(uint16_t*) &footer[6];
+    nrecs_on_disk = *(uint16_t*) &footer[8];
+    nrecs = *(uint16_t*) &footer[10];
+    global_header_size = *(uint32_t*) &footer[12];
+    global_header_offset = *(uint32_t*) &footer[16];
+    comment_len = *(uint16_t*) &footer[20];
 
     assert(disk_no == 0);
     assert(disk_start == 0);
@@ -123,21 +124,14 @@ void cnpy::parse_zip_footer(FILE* fp, unsigned short& nrecs, unsigned int& globa
 }
 
 cnpy::NpyArray load_the_npy_file(FILE* fp) {
-    unsigned int* shape;
-    unsigned int ndims, word_size;
+    std::vector<size_t> shape;
+    size_t word_size;
     bool fortran_order;
-    cnpy::parse_npy_header(fp,word_size,shape,ndims,fortran_order);
-    unsigned long long size = 1; //long long so no overflow when multiplying by word_size
-    for(unsigned int i = 0;i < ndims;i++) size *= shape[i];
+    cnpy::parse_npy_header(fp,word_size,shape,fortran_order);
 
-    cnpy::NpyArray arr;
-    arr.word_size = word_size;
-    arr.shape = std::vector<unsigned int>(shape,shape+ndims);
-    delete[] shape;
-    arr.data = new char[size*word_size];    
-    arr.fortran_order = fortran_order;
-    size_t nread = fread(arr.data,word_size,size,fp);
-    if(nread != size)
+    cnpy::NpyArray arr(shape, word_size, fortran_order);
+    size_t nread = fread(arr.data<char>(),1,arr.num_bytes(),fp);
+    if(nread != arr.num_bytes())
         throw std::runtime_error("load_the_npy_file: failed fread");
     return arr;
 }
@@ -160,7 +154,7 @@ cnpy::npz_t cnpy::npz_load(std::string fname) {
         if(local_header[2] != 0x03 || local_header[3] != 0x04) break;
 
         //read in the variable name
-        unsigned short name_len = *(unsigned short*) &local_header[26];
+        uint16_t name_len = *(uint16_t*) &local_header[26];
         std::string varname(name_len,' ');
         size_t vname_res = fread(&varname[0],sizeof(char),name_len,fp);
         if(vname_res != name_len)
@@ -170,7 +164,7 @@ cnpy::npz_t cnpy::npz_load(std::string fname) {
         varname.erase(varname.end()-4,varname.end());
 
         //read in the extra field
-        unsigned short extra_field_len = *(unsigned short*) &local_header[28];
+        uint16_t extra_field_len = *(uint16_t*) &local_header[28];
         if(extra_field_len > 0) {
             std::vector<char> buff(extra_field_len);
             size_t efield_res = fread(&buff[0],sizeof(char),extra_field_len,fp);
@@ -203,7 +197,7 @@ cnpy::NpyArray cnpy::npz_load(std::string fname, std::string varname) {
         if(local_header[2] != 0x03 || local_header[3] != 0x04) break;
 
         //read in the variable name
-        unsigned short name_len = *(unsigned short*) &local_header[26];
+        uint16_t name_len = *(uint16_t*) &local_header[26];
         std::string vname(name_len,' ');
         size_t vname_res = fread(&vname[0],sizeof(char),name_len,fp);      
         if(vname_res != name_len)
@@ -211,7 +205,7 @@ cnpy::NpyArray cnpy::npz_load(std::string fname, std::string varname) {
         vname.erase(vname.end()-4,vname.end()); //erase the lagging .npy
 
         //read in the extra field
-        unsigned short extra_field_len = *(unsigned short*) &local_header[28];
+        uint16_t extra_field_len = *(uint16_t*) &local_header[28];
         fseek(fp,extra_field_len,SEEK_CUR); //skip past the extra field
 
         if(vname == varname) {
@@ -221,7 +215,7 @@ cnpy::NpyArray cnpy::npz_load(std::string fname, std::string varname) {
         }
         else {
             //skip past the data
-            unsigned int size = *(unsigned int*) &local_header[22];
+            size_t size = *(uint32_t*) &local_header[22];
             fseek(fp,size,SEEK_CUR);
         }
     }
