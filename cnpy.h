@@ -17,6 +17,7 @@
 #include<map>
 #include<memory>
 #include<stdint.h>
+#include<numeric>
 
 namespace cnpy {
 
@@ -80,48 +81,45 @@ namespace cnpy {
 
     template<typename T> void npy_save(std::string fname, const T* data, const std::vector<size_t> shape, std::string mode = "w") {
         FILE* fp = NULL;
+        std::vector<size_t> true_data_shape; //if appending, the shape of existing + new data
 
         if(mode == "a") fp = fopen(fname.c_str(),"r+b");
 
         if(fp) {
             //file exists. we need to append to it. read the header, modify the array size
             size_t word_size;
-            std::vector<size_t> tmp_shape;
             bool fortran_order;
-            parse_npy_header(fp,word_size,tmp_shape,fortran_order);
+            parse_npy_header(fp,word_size,true_data_shape,fortran_order);
             assert(!fortran_order);
 
             if(word_size != sizeof(T)) {
                 std::cout<<"libnpy error: "<<fname<<" has word size "<<word_size<<" but npy_save appending data sized "<<sizeof(T)<<"\n";
                 assert( word_size == sizeof(T) );
             }
-            if(tmp_shape.size() != shape.size()) {
+            if(true_data_shape.size() != shape.size()) {
                 std::cout<<"libnpy error: npy_save attempting to append misdimensioned data to "<<fname<<"\n";
-                assert(tmp_shape.size() != shape.size());
+                assert(true_data_shape.size() != shape.size());
             }
 
             for(size_t i = 1; i < shape.size(); i++) {
-                if(shape[i] != tmp_shape[i]) {
+                if(shape[i] != true_data_shape[i]) {
                     std::cout<<"libnpy error: npy_save attempting to append misshaped data to "<<fname<<"\n";
-                    assert(shape[i] == tmp_shape[i]);
+                    assert(shape[i] == true_data_shape[i]);
                 }
             }
-            tmp_shape[0] += shape[0];
-
-            fseek(fp,0,SEEK_SET);
-            std::vector<char> header = create_npy_header<T>(tmp_shape);
-            fwrite(&header[0],sizeof(char),header.size(),fp);
-            fseek(fp,0,SEEK_END);
+            true_data_shape[0] += shape[0];
         }
         else {
             fp = fopen(fname.c_str(),"wb");
-            std::vector<char> header = create_npy_header<T>(shape);
-            fwrite(&header[0],sizeof(char),header.size(),fp);
+            true_data_shape = shape;
         }
 
-        size_t nels = 1;
-        for(size_t i = 0;i < shape.size();i++) nels *= shape[i];
+        std::vector<char> header = create_npy_header<T>(true_data_shape);
+        size_t nels = std::accumulate(shape.begin(),shape.end(),1,std::multiplies<size_t>());
 
+        fseek(fp,0,SEEK_SET);
+        fwrite(&header[0],sizeof(char),header.size(),fp);
+        fseek(fp,0,SEEK_END);
         fwrite(data,sizeof(T),nels,fp);
         fclose(fp);
     }
@@ -160,8 +158,7 @@ namespace cnpy {
 
         std::vector<char> npy_header = create_npy_header<T>(shape);
 
-        size_t nels = 1;
-        for (size_t m=0; m<shape.size(); m++ ) nels *= shape[m];
+        size_t nels = std::accumulate(shape.begin(),shape.end(),1,std::multiplies<size_t>());
         int nbytes = nels*sizeof(T) + npy_header.size();
 
         //get the CRC of the data to be added
