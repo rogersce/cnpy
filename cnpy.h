@@ -76,8 +76,8 @@ namespace cnpy {
         return lhs;
     }
 
-    template<> std::vector<char>& operator+=(std::vector<char>& lhs, const std::string rhs); 
-    template<> std::vector<char>& operator+=(std::vector<char>& lhs, const char* rhs); 
+    template<> std::vector<char>& operator+=(std::vector<char>& lhs, const std::string rhs);
+    template<> std::vector<char>& operator+=(std::vector<char>& lhs, const char* rhs);
 
 
     template<typename T> void npy_save(std::string fname, const T* data, const std::vector<size_t> shape, std::string mode = "w") {
@@ -141,7 +141,7 @@ namespace cnpy {
         if(fp) {
             //zip file exists. we need to add a new npy file to it.
             //first read the footer. this gives us the offset and size of the global header
-            //then read and store the global header. 
+            //then read and store the global header.
             //below, we will write the the new data at the start of the global header then append the global header and footer below it
             size_t global_header_size;
             parse_zip_footer(fp,nrecs,global_header_size,global_header_offset);
@@ -160,7 +160,7 @@ namespace cnpy {
         std::vector<char> npy_header = create_npy_header<T>(shape);
 
         size_t nels = std::accumulate(shape.begin(),shape.end(),1,std::multiplies<size_t>());
-        int nbytes = nels*sizeof(T) + npy_header.size();
+        size_t nbytes = nels*sizeof(T) + npy_header.size();
 
         //get the CRC of the data to be added
         uint32_t crc = crc32(0L,(uint8_t*)&npy_header[0],npy_header.size());
@@ -206,7 +206,7 @@ namespace cnpy {
         footer += (uint32_t) (global_header_offset + nbytes + local_header.size()); //offset of start of global headers, since global header now starts after newly written array
         footer += (uint16_t) 0; //zip file comment length
 
-        //write everything      
+        //write everything
         fwrite(&local_header[0],sizeof(char),local_header.size(),fp);
         fwrite(&npy_header[0],sizeof(char),npy_header.size(),fp);
         fwrite(data,sizeof(T),nels,fp);
