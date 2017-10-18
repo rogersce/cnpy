@@ -61,7 +61,7 @@ namespace cnpy {
     char map_type(const std::type_info& t);
     template<typename T> std::vector<char> create_npy_header(const std::vector<size_t>& shape);
     void parse_npy_header(FILE* fp,size_t& word_size, std::vector<size_t>& shape, bool& fortran_order);
-    void parse_npy_header(char* buffer,size_t& word_size, std::vector<size_t>& shape, bool& fortran_order);
+    void parse_npy_header(unsigned char* buffer,size_t& word_size, std::vector<size_t>& shape, bool& fortran_order);
     void parse_zip_footer(FILE* fp, uint16_t& nrecs, size_t& global_header_size, size_t& global_header_offset);
     npz_t npz_load(std::string fname);
     NpyArray npz_load(std::string fname, std::string varname);
