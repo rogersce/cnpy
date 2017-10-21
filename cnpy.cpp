@@ -110,12 +110,18 @@ void cnpy::parse_npy_header(FILE* fp, size_t& word_size, std::vector<size_t>& sh
     int loc1, loc2;
 
     //fortran order
-    loc1 = header.find("fortran_order")+16;
+    loc1 = header.find("fortran_order");
+    if (loc1 < 0)
+        throw std::runtime_error("parse_npy_header: failed to find header keyword: 'fortran_order'");
+    loc1 += 16;
     fortran_order = (header.substr(loc1,4) == "True" ? true : false);
 
     //shape
     loc1 = header.find("(");
     loc2 = header.find(")");
+    if (loc1 < 0 || loc2 < 0)
+        throw std::runtime_error("parse_npy_header: failed to find header keyword: '(' or ')'");
+    
     std::string str_shape = header.substr(loc1+1,loc2-loc1-1);
     size_t ndims;
     if(str_shape[str_shape.size()-1] == ',') ndims = 1;
@@ -130,7 +136,10 @@ void cnpy::parse_npy_header(FILE* fp, size_t& word_size, std::vector<size_t>& sh
     //endian, word size, data type
     //byte order code | stands for not applicable. 
     //not sure when this applies except for byte array
-    loc1 = header.find("descr")+9;
+    loc1 = header.find("descr");
+    if (loc1 < 0)
+        throw std::runtime_error("parse_npy_header: failed to find header keyword: 'descr'");
+    loc1 += 9;
     bool littleEndian = (header[loc1] == '<' || header[loc1] == '|' ? true : false);
     assert(littleEndian);
 
