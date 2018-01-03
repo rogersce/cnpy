@@ -9,8 +9,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 option(ENABLE_STATIC "Build static (.a) library" ON)
 
+find_package(ZLIB REQUIRED)
+
+include_directories(${ZLIB_INCLUDE_DIRS})
+
 add_library(cnpy SHARED "cnpy.cpp")
-target_link_libraries(cnpy z)
+target_link_libraries(cnpy ${ZLIB_LIBRARIES})
 install(TARGETS "cnpy" LIBRARY DESTINATION lib PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 
 if(ENABLE_STATIC)
