@@ -4,9 +4,11 @@ NumPy offers the `save` method for easy saving of arrays into .npy and `savez` f
 
 `cnpy` lets you read and write to these formats in C++. 
 
-The motivation comes from scientific programming where large amounts of data are generated in C++ and analyzed in Python. 
+The motivation comes from scientific programming where large amounts of data are generated in C++ and analyzed in Python.
+
 Writing to .npy has the advantage of using low-level C++ I/O (fread and fwrite) for speed and binary format for size. 
-The .npy file header takes care of specifying the size, shape, and data type of the array, so specifying the format of the data is unnecessary. 
+The .npy file header takes care of specifying the size, shape, and data type of the array, so specifying the format of the data is unnecessary.
+
 Loading data written in numpy formats into C++ is equally simple, but requires you to type-cast the loaded data to the type of your choice.
 
 # Installation:
@@ -14,7 +16,7 @@ Loading data written in numpy formats into C++ is equally simple, but requires y
 Default installation directory is /usr/local. 
 To specify a different directory, add `-DCMAKE_INSTALL_PREFIX=/path/to/install/dir` to the cmake invocation in step 4.
 
-1. get cmake at www.cmake.org
+1. get [cmake](www.cmake.org)
 2. create a build directory, say $HOME/build
 3. cd $HOME/build
 4. cmake /path/to/cnpy
@@ -23,7 +25,7 @@ To specify a different directory, add `-DCMAKE_INSTALL_PREFIX=/path/to/install/d
 
 # Using:
 
-To use, #include"cnpy.h" in your source code. Compile the source code mycode.cpp as
+To use, `#include"cnpy.h"` in your source code. Compile the source code mycode.cpp as
 
 ```bash
 g++ -o mycode mycode.cpp -L/path/to/install/dir -lcnpy -lz --std=c++11
