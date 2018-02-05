@@ -229,8 +229,9 @@ cnpy::NpyArray load_the_npz_array(FILE* fp, uint32_t compr_bytes, uint32_t uncom
 cnpy::npz_t cnpy::npz_load(std::string fname) {
     FILE* fp = fopen(fname.c_str(),"rb");
 
-    if(!fp) printf("npz_load: Error! Unable to open file %s!\n",fname.c_str());
-    assert(fp);
+    if(!fp) {
+        throw std::runtime_error("npz_load: Error! Unable to open file "+fname+"!");
+    }
 
     cnpy::npz_t arrays;  
 
