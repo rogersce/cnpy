@@ -9,7 +9,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 option(ENABLE_STATIC "Build static (.a) library" ON)
 
-find_package(ZLIB REQUIRED)
+option(ENABLE_ZLIB "Build zlip API" ON)
+
+if(ENABLE_ZLIB)
+    find_package(ZLIB REQUIRED)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_ZLIB_API")
+endif(ENABLE_ZLIB)
 
 include_directories(${ZLIB_INCLUDE_DIRS})
 

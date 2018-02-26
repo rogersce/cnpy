@@ -187,6 +187,7 @@ cnpy::NpyArray load_the_npy_file(FILE* fp) {
     return arr;
 }
 
+#ifdef ENABLE_ZLIB_API
 cnpy::NpyArray load_the_npz_array(FILE* fp, uint32_t compr_bytes, uint32_t uncompr_bytes) {
 
     std::vector<unsigned char> buffer_compr(compr_bytes);
@@ -324,6 +325,7 @@ cnpy::NpyArray cnpy::npz_load(std::string fname, std::string varname) {
     printf("npz_load: Error! Variable name %s not found in %s!\n",varname.c_str(),fname.c_str());
     abort();
 }
+#endif // ENABLE_ZLIB_API
 
 cnpy::NpyArray cnpy::npy_load(std::string fname) {
 
@@ -339,6 +341,5 @@ cnpy::NpyArray cnpy::npy_load(std::string fname) {
     fclose(fp);
     return arr;
 }
-
 
 

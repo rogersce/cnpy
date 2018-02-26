@@ -13,7 +13,9 @@
 #include<typeinfo>
 #include<iostream>
 #include<cassert>
+#ifdef ENABLE_ZLIB_API
 #include<zlib.h>
+#endif
 #include<map>
 #include<memory>
 #include<stdint.h>
@@ -130,6 +132,7 @@ namespace cnpy {
         fclose(fp);
     }
 
+#ifdef ENABLE_ZLIB_API
     template<typename T> void npz_save(std::string zipname, std::string fname, const T* data, const std::vector<size_t>& shape, std::string mode = "w")
     {
         //first, append a .npy to the fname
@@ -219,6 +222,7 @@ namespace cnpy {
         fwrite(&footer[0],sizeof(char),footer.size(),fp);
         fclose(fp);
     }
+#endif //ENABLE_ZLIB_API
 
     template<typename T> void npy_save(std::string fname, const std::vector<T> data, std::string mode = "w") {
         std::vector<size_t> shape;
@@ -232,18 +236,25 @@ namespace cnpy {
         npz_save(zipname, fname, &data[0], shape, mode);
     }
 
+    template <typename T> std::string to_string(T value)
+    {
+        std::ostringstream os ;
+	os << value ;
+	return os.str() ;
+    }
+
     template<typename T> std::vector<char> create_npy_header(const std::vector<size_t>& shape) {  
 
         std::vector<char> dict;
         dict += "{'descr': '";
         dict += BigEndianTest();
         dict += map_type(typeid(T));
-        dict += std::to_string(sizeof(T));
+        dict += to_string(sizeof(T));
         dict += "', 'fortran_order': False, 'shape': (";
-        dict += std::to_string(shape[0]);
+        dict += to_string(shape[0]);
         for(size_t i = 1;i < shape.size();i++) {
             dict += ", ";
-            dict += std::to_string(shape[i]);
+            dict += to_string(shape[i]);
         }
         if(shape.size() == 1) dict += ",";
         dict += "), }";
