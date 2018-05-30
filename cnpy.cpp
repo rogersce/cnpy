@@ -9,6 +9,7 @@
 #include<cstring>
 #include<iomanip>
 #include<stdint.h>
+#include<stdexcept>
 
 char cnpy::BigEndianTest() {
     int x = 1;
@@ -278,10 +279,7 @@ cnpy::npz_t cnpy::npz_load(std::string fname) {
 cnpy::NpyArray cnpy::npz_load(std::string fname, std::string varname) {
     FILE* fp = fopen(fname.c_str(),"rb");
 
-    if(!fp) {
-        printf("npz_load: Error! Unable to open file %s!\n",fname.c_str());
-        abort();
-    }       
+    if(!fp) throw std::runtime_error("npz_load: Unable to open file "+fname);
 
     while(1) {
         std::vector<char> local_header(30);
@@ -321,18 +319,16 @@ cnpy::NpyArray cnpy::npz_load(std::string fname, std::string varname) {
     }
 
     fclose(fp);
-    printf("npz_load: Error! Variable name %s not found in %s!\n",varname.c_str(),fname.c_str());
-    abort();
+
+    //if we get here, we haven't found the variable in the file
+    throw std::runtime_error("npz_load: Variable name "+varname+" not found in "+fname);
 }
 
 cnpy::NpyArray cnpy::npy_load(std::string fname) {
 
     FILE* fp = fopen(fname.c_str(), "rb");
 
-    if(!fp) {
-        printf("npy_load: Error! Unable to open file %s!\n",fname.c_str());
-        abort();  
-    }
+    if(!fp) throw std::runtime_error("npy_load: Unable to open file "+fname);
 
     NpyArray arr = load_the_npy_file(fp);
 
