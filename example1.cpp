@@ -33,6 +33,7 @@ int main()
     //npy array on file now has shape (Nz+Nz,Ny,Nx)
     cnpy::npy_save("arr1.npy",&data[0],{Nz,Ny,Nx},"a");
 
+#ifdef ENABLE_ZLIB_API
     //now write to an npz file
     //non-array variables are treated as 1D arrays with 1 element
     double myVar1 = 1.2;
@@ -52,4 +53,6 @@ int main()
     double* mv1 = arr_mv1.data<double>();
     assert(arr_mv1.shape.size() == 1 && arr_mv1.shape[0] == 1);
     assert(mv1[0] == myVar1);
+#endif //ENABLE_ZLIP_API
+
 }

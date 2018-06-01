@@ -51,5 +51,13 @@ struct NpyArray {
     template<typename T> T* data();
 };
 ```
+# Cross Compilation
+Use CMAKE-cross.txt as ref to configure your cross tools paths.
+
+Use below command to configure the make
+Command: cmake -DCMAKE_TOOLCHAIN_FILE=./CMAKE-cross.txt .
+
+# Zlib:
+Turn off ENABLE_ZLIB in CMakeLists.txt to disable ZLIB API - by default it's on.
 
 See [example1.cpp](example1.cpp) for examples of how to use the library. example1 will also be build during cmake installation.
