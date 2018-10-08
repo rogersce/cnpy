@@ -135,7 +135,8 @@ namespace cnpy {
 
     template <typename T>
     void npz_save(std::string zipname, std::string fname, const T *data,
-                  const std::vector<size_t> &shape, std::string mode = "w") {
+                  const std::vector<size_t> &shape, std::string mode = "w",
+                  int32_t comp = ZIP_CM_STORE) {
       libzip::flags_t flag = 0;
       if (mode == "a") {
       } else if (mode == "w") {
@@ -171,7 +172,8 @@ namespace cnpy {
       };
 
       // Write everything
-      zip.add(source, fname + ".npy");
+      uint64_t index = zip.add(source, fname + ".npy");
+      zip.set_file_compression(index, comp);
     }
 
     template<typename T> void npy_save(std::string fname, const std::vector<T> data, std::string mode = "w") {
