@@ -59,12 +59,15 @@ template<> std::vector<char>& cnpy::operator+=(std::vector<char>& lhs, const cha
     return lhs;
 }
 
-void cnpy::parse_npy_header(unsigned char* buffer,size_t& word_size, std::vector<size_t>& shape, bool& fortran_order) {
-    //std::string magic_string(buffer,6);
-    uint8_t major_version = *reinterpret_cast<uint8_t*>(buffer+6);
-    uint8_t minor_version = *reinterpret_cast<uint8_t*>(buffer+7);
-    uint16_t header_len = *reinterpret_cast<uint16_t*>(buffer+8);
-    std::string header(reinterpret_cast<char*>(buffer+9),header_len);
+void cnpy::parse_npy_header(std::string &buffer, size_t &word_size,
+                            std::vector<size_t> &shape, bool &fortran_order) {
+    assert(buffer.substr(0, 6) == "\x93NUMPY");
+    uint8_t major_version = *reinterpret_cast<uint8_t *>(buffer.data() + 6);
+    uint8_t minor_version = *reinterpret_cast<uint8_t *>(buffer.data() + 7);
+    uint16_t header_len =
+      (*reinterpret_cast<uint8_t *>(buffer.data() + 8)) |
+      ((*reinterpret_cast<uint8_t *>(buffer.data() + 9)) << 8);
+    std::string header = buffer.substr(10, header_len);
 
     size_t loc1, loc2;
 
@@ -188,140 +191,55 @@ cnpy::NpyArray load_the_npy_file(FILE* fp) {
     return arr;
 }
 
-cnpy::NpyArray load_the_npz_array(FILE* fp, uint32_t compr_bytes, uint32_t uncompr_bytes) {
+cnpy::NpyArray load_the_npz_array(libzip::file &file, uint64_t size) {
+  std::string buffer = file.read(size);
 
-    std::vector<unsigned char> buffer_compr(compr_bytes);
-    std::vector<unsigned char> buffer_uncompr(uncompr_bytes);
-    size_t nread = fread(&buffer_compr[0],1,compr_bytes,fp);
-    if(nread != compr_bytes)
-        throw std::runtime_error("load_the_npy_file: failed fread");
+  std::vector<size_t> shape;
+  size_t word_size;
+  bool fortran_order;
+  cnpy::parse_npy_header(buffer, word_size,
+                         shape, fortran_order);
 
-    int err;
-    z_stream d_stream;
+  cnpy::NpyArray array(shape, word_size, fortran_order);
 
-    d_stream.zalloc = Z_NULL;
-    d_stream.zfree = Z_NULL;
-    d_stream.opaque = Z_NULL;
-    d_stream.avail_in = 0;
-    d_stream.next_in = Z_NULL;
-    err = inflateInit2(&d_stream, -MAX_WBITS);
+  uint64_t offset = size - array.num_bytes();
+  memcpy(array.data<unsigned char>(), buffer.data() + offset,
+         array.num_bytes());
 
-    d_stream.avail_in = compr_bytes;
-    d_stream.next_in = &buffer_compr[0];
-    d_stream.avail_out = uncompr_bytes;
-    d_stream.next_out = &buffer_uncompr[0];
-
-    err = inflate(&d_stream, Z_FINISH);
-    err = inflateEnd(&d_stream);
-
-    std::vector<size_t> shape;
-    size_t word_size;
-    bool fortran_order;
-    cnpy::parse_npy_header(&buffer_uncompr[0],word_size,shape,fortran_order);
-
-    cnpy::NpyArray array(shape, word_size, fortran_order);
-
-    size_t offset = uncompr_bytes - array.num_bytes();
-    memcpy(array.data<unsigned char>(),&buffer_uncompr[0]+offset,array.num_bytes());
-
-    return array;
+  return array;
 }
 
 cnpy::npz_t cnpy::npz_load(std::string fname) {
-    FILE* fp = fopen(fname.c_str(),"rb");
+  libzip::archive zip(fname, ZIP_RDONLY);
+  cnpy::npz_t arrays;
 
-    if(!fp) {
-        throw std::runtime_error("npz_load: Error! Unable to open file "+fname+"!");
+  for (auto stat : zip) {
+    if (!(stat.valid & (ZIP_STAT_NAME | ZIP_STAT_SIZE))) {
+      // Skip files without name or size
+      continue;
     }
+    std::string name(stat.name);
+    auto file = zip.open(name);
 
-    cnpy::npz_t arrays;  
+    // erase the lagging .npy
+    std::string varname = name.substr(0, name.size() - 4);
+    arrays[varname] = load_the_npz_array(file, stat.size);
 
-    while(1) {
-        std::vector<char> local_header(30);
-        size_t headerres = fread(&local_header[0],sizeof(char),30,fp);
-        if(headerres != 30)
-            throw std::runtime_error("npz_load: failed fread");
+  }
 
-        //if we've reached the global header, stop reading
-        if(local_header[2] != 0x03 || local_header[3] != 0x04) break;
-
-        //read in the variable name
-        uint16_t name_len = *(uint16_t*) &local_header[26];
-        std::string varname(name_len,' ');
-        size_t vname_res = fread(&varname[0],sizeof(char),name_len,fp);
-        if(vname_res != name_len)
-            throw std::runtime_error("npz_load: failed fread");
-
-        //erase the lagging .npy        
-        varname.erase(varname.end()-4,varname.end());
-
-        //read in the extra field
-        uint16_t extra_field_len = *(uint16_t*) &local_header[28];
-        if(extra_field_len > 0) {
-            std::vector<char> buff(extra_field_len);
-            size_t efield_res = fread(&buff[0],sizeof(char),extra_field_len,fp);
-            if(efield_res != extra_field_len)
-                throw std::runtime_error("npz_load: failed fread");
-        }
-
-        uint16_t compr_method = *reinterpret_cast<uint16_t*>(&local_header[0]+8);
-        uint32_t compr_bytes = *reinterpret_cast<uint32_t*>(&local_header[0]+18);
-        uint32_t uncompr_bytes = *reinterpret_cast<uint32_t*>(&local_header[0]+22);
-
-        if(compr_method == 0) {arrays[varname] = load_the_npy_file(fp);}
-        else {arrays[varname] = load_the_npz_array(fp,compr_bytes,uncompr_bytes);}
-    }
-
-    fclose(fp);
-    return arrays;  
+  return arrays;
 }
 
 cnpy::NpyArray cnpy::npz_load(std::string fname, std::string varname) {
-    FILE* fp = fopen(fname.c_str(),"rb");
+  libzip::archive zip(fname, ZIP_RDONLY);
+  std::string varfilename = varname + ".npy";
+  libzip::stat stat = zip.stat(varfilename);
+  if (!(stat.valid & ZIP_STAT_SIZE)) {
+    throw std::runtime_error("npz_load: No size associated with " + varname);
+  }
 
-    if(!fp) throw std::runtime_error("npz_load: Unable to open file "+fname);
-
-    while(1) {
-        std::vector<char> local_header(30);
-        size_t header_res = fread(&local_header[0],sizeof(char),30,fp);
-        if(header_res != 30)
-            throw std::runtime_error("npz_load: failed fread");
-
-        //if we've reached the global header, stop reading
-        if(local_header[2] != 0x03 || local_header[3] != 0x04) break;
-
-        //read in the variable name
-        uint16_t name_len = *(uint16_t*) &local_header[26];
-        std::string vname(name_len,' ');
-        size_t vname_res = fread(&vname[0],sizeof(char),name_len,fp);      
-        if(vname_res != name_len)
-            throw std::runtime_error("npz_load: failed fread");
-        vname.erase(vname.end()-4,vname.end()); //erase the lagging .npy
-
-        //read in the extra field
-        uint16_t extra_field_len = *(uint16_t*) &local_header[28];
-        fseek(fp,extra_field_len,SEEK_CUR); //skip past the extra field
-        
-        uint16_t compr_method = *reinterpret_cast<uint16_t*>(&local_header[0]+8);
-        uint32_t compr_bytes = *reinterpret_cast<uint32_t*>(&local_header[0]+18);
-        uint32_t uncompr_bytes = *reinterpret_cast<uint32_t*>(&local_header[0]+22);
-
-        if(vname == varname) {
-            NpyArray array  = (compr_method == 0) ? load_the_npy_file(fp) : load_the_npz_array(fp,compr_bytes,uncompr_bytes);
-            fclose(fp);
-            return array;
-        }
-        else {
-            //skip past the data
-            uint32_t size = *(uint32_t*) &local_header[22];
-            fseek(fp,size,SEEK_CUR);
-        }
-    }
-
-    fclose(fp);
-
-    //if we get here, we haven't found the variable in the file
-    throw std::runtime_error("npz_load: Variable name "+varname+" not found in "+fname);
+  auto file = zip.open(varfilename);
+  return load_the_npz_array(file, stat.size);
 }
 
 cnpy::NpyArray cnpy::npy_load(std::string fname) {

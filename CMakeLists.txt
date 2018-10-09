@@ -1,20 +1,33 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.0 FATAL_ERROR)
-if(COMMAND cmake_policy)
-	cmake_policy(SET CMP0003 NEW)
-endif(COMMAND cmake_policy)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.1)
 
 project(CNPY)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+# Update submodules as needed
+find_package(Git QUIET)
+if(GIT_FOUND)
+    option(GIT_SUBMODULE "Check submodules during build" ON)
+    if(GIT_SUBMODULE)
+        message(STATUS "Submodule update")
+        execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init
+                        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                        RESULT_VARIABLE GIT_SUBMOD_RESULT)
+        if(NOT GIT_SUBMOD_RESULT EQUAL "0")
+            message(FATAL_ERROR "git submodule update --init failed with ${GIT_SUBMOD_RESULT}, please checkout submodules")
+        endif()
+    endif()
+endif()
 
 option(ENABLE_STATIC "Build static (.a) library" ON)
 
-find_package(ZLIB REQUIRED)
-
-include_directories(${ZLIB_INCLUDE_DIRS})
+SET(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
+FIND_PACKAGE(LibZip REQUIRED)
 
 add_library(cnpy SHARED "cnpy.cpp")
-target_link_libraries(cnpy ${ZLIB_LIBRARIES})
+target_include_directories(cnpy PUBLIC ${LIBZIP_INCLUDE_DIR_ZIP})
+target_include_directories(cnpy PUBLIC "extern/libzippp/")
+target_link_libraries(cnpy ${LIBZIP_LIBRARIES})
+target_compile_features(cnpy PRIVATE cxx_std_14)
+
 install(TARGETS "cnpy" LIBRARY DESTINATION lib PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 
 if(ENABLE_STATIC)
