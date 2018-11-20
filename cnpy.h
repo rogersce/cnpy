@@ -16,22 +16,22 @@
 #include<zlib.h>
 #include<map>
 #include<memory>
-#include<stdint.h>
+#include<cstdint>
 #include<numeric>
 
 namespace cnpy {
 
     struct NpyArray {
-        NpyArray(const std::vector<size_t>& _shape, size_t _word_size, bool _fortran_order) :
-            shape(_shape), word_size(_word_size), fortran_order(_fortran_order)
+        NpyArray(std::vector<size_t> _shape, size_t _word_size, bool _fortran_order) :
+            shape(std::move(_shape)), word_size(_word_size), fortran_order(_fortran_order)
         {
             num_vals = 1;
-            for(size_t i = 0;i < shape.size();i++) num_vals *= shape[i];
-            data_holder = std::shared_ptr<std::vector<char>>(
-                new std::vector<char>(num_vals * word_size));
+            for (unsigned long i : shape) num_vals *= i;
+            data_holder = std::make_shared<std::vector<char>>(
+                    num_vals * word_size);
         }
 
-        NpyArray() : shape(0), word_size(0), fortran_order(0), num_vals(0) { }
+        NpyArray() : shape(0), word_size(0), fortran_order(false), num_vals(0) { }
 
         template<typename T>
         T* data() {
@@ -85,8 +85,9 @@ namespace cnpy {
     template<> std::vector<char>& operator+=(std::vector<char>& lhs, const char* rhs);
 
 
-    template<typename T> void npy_save(std::string fname, const T* data, const std::vector<size_t> shape, std::string mode = "w") {
-        FILE* fp = NULL;
+    template<typename T> void npy_save(const std::string& fname, const T* data, const std::vector<size_t>& shape,
+            const std::string& mode = "w") {
+        FILE* fp = nullptr;
         std::vector<size_t> true_data_shape; //if appending, the shape of existing + new data
 
         if(mode == "a") fp = fopen(fname.c_str(),"r+b");
@@ -121,7 +122,7 @@ namespace cnpy {
         }
 
         std::vector<char> header = create_npy_header<T>(true_data_shape);
-        size_t nels = std::accumulate(shape.begin(),shape.end(),1,std::multiplies<size_t>());
+        size_t nels = std::accumulate(shape.begin(),shape.end(),std::size_t(1),std::multiplies<size_t>());
 
         fseek(fp,0,SEEK_SET);
         fwrite(&header[0],sizeof(char),header.size(),fp);
@@ -130,13 +131,14 @@ namespace cnpy {
         fclose(fp);
     }
 
-    template<typename T> void npz_save(std::string zipname, std::string fname, const T* data, const std::vector<size_t>& shape, std::string mode = "w")
+    template<typename T> void npz_save(const std::string& zipname, std::string fname, const T* data, const std::vector<size_t>& shape,
+                                       const std::string& mode = "w")
     {
         //first, append a .npy to the fname
         fname += ".npy";
 
         //now, on with the show
-        FILE* fp = NULL;
+        FILE* fp = nullptr;
         uint16_t nrecs = 0;
         size_t global_header_offset = 0;
         std::vector<char> global_header;
@@ -164,7 +166,7 @@ namespace cnpy {
 
         std::vector<char> npy_header = create_npy_header<T>(shape);
 
-        size_t nels = std::accumulate(shape.begin(),shape.end(),1,std::multiplies<size_t>());
+        size_t nels = std::accumulate(shape.begin(),shape.end(),std::size_t(1),std::multiplies<size_t>());
         size_t nbytes = nels*sizeof(T) + npy_header.size();
 
         //get the CRC of the data to be added
