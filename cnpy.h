@@ -85,7 +85,7 @@ namespace cnpy {
     template<> std::vector<char>& operator+=(std::vector<char>& lhs, const char* rhs);
 
 
-    template<typename T> void npy_save(std::string fname, const T* data, const std::vector<size_t> shape, std::string mode = "w") {
+    template<typename T> void npy_save(std::string fname, const T* data, const std::vector<size_t> shape, std::string mode = "w", std::ostream &err = std::clog) {
         FILE* fp = NULL;
         std::vector<size_t> true_data_shape; //if appending, the shape of existing + new data
 
@@ -99,17 +99,17 @@ namespace cnpy {
             assert(!fortran_order);
 
             if(word_size != sizeof(T)) {
-                std::cout<<"libnpy error: "<<fname<<" has word size "<<word_size<<" but npy_save appending data sized "<<sizeof(T)<<"\n";
+                err<<"libnpy error: "<<fname<<" has word size "<<word_size<<" but npy_save appending data sized "<<sizeof(T)<<"\n";
                 assert( word_size == sizeof(T) );
             }
             if(true_data_shape.size() != shape.size()) {
-                std::cout<<"libnpy error: npy_save attempting to append misdimensioned data to "<<fname<<"\n";
+                err<<"libnpy error: npy_save attempting to append misdimensioned data to "<<fname<<"\n";
                 assert(true_data_shape.size() != shape.size());
             }
 
             for(size_t i = 1; i < shape.size(); i++) {
                 if(shape[i] != true_data_shape[i]) {
-                    std::cout<<"libnpy error: npy_save attempting to append misshaped data to "<<fname<<"\n";
+                    err<<"libnpy error: npy_save attempting to append misshaped data to "<<fname<<"\n";
                     assert(shape[i] == true_data_shape[i]);
                 }
             }
@@ -220,10 +220,10 @@ namespace cnpy {
         fclose(fp);
     }
 
-    template<typename T> void npy_save(std::string fname, const std::vector<T> data, std::string mode = "w") {
+    template<typename T> void npy_save(std::string fname, const std::vector<T> data, std::string mode = "w", std::ostream &err = std::clog) {
         std::vector<size_t> shape;
         shape.push_back(data.size());
-        npy_save(fname, &data[0], shape, mode);
+        npy_save(fname, &data[0], shape, mode, err);
     }
 
     template<typename T> void npz_save(std::string zipname, std::string fname, const std::vector<T> data, std::string mode = "w") {
