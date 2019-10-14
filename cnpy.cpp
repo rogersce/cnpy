@@ -99,6 +99,10 @@ void cnpy::parse_npy_header(unsigned char* buffer,size_t& word_size, std::vector
     std::string str_ws = header.substr(loc1+2);
     loc2 = str_ws.find("'");
     word_size = atoi(str_ws.substr(0,loc2).c_str());
+
+    //Special case: Unicode chars -- these have 4 bytes!
+    if(header[loc1+1] == 'U')
+        word_size *= 4;
 }
 
 void cnpy::parse_npy_header(FILE* fp, size_t& word_size, std::vector<size_t>& shape, bool& fortran_order) {  
