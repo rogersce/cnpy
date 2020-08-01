@@ -23,6 +23,10 @@ if(ENABLE_STATIC)
     install(TARGETS "cnpy-static" ARCHIVE DESTINATION lib)
 endif(ENABLE_STATIC)
 
+configure_file("${PROJECT_SOURCE_DIR}/cmake/cnpy-config.cmake.in" "${CMAKE_CURRENT_BINARY_DIR}/cnpy-config.cmake" @ONLY IMMEDIATE)
+install(FILES "${PROJECT_BINARY_DIR}/cnpy-config.cmake" DESTINATION "lib/cmake/cnpy-${PROJECT_VERSION}")
+
+
 install(FILES "cnpy.h" DESTINATION include)
 install(FILES "mat2npz" "npy2mat" "npz2mat" DESTINATION bin PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 
