@@ -68,6 +68,7 @@ namespace cnpy {
     template<typename... COLS> std::vector<char> create_npy_tuple_header(const std::vector<size_t>& shape);
     void parse_npy_header(FILE* fp,size_t& word_size, std::vector<size_t>& shape, bool& fortran_order);
     void parse_npy_header(unsigned char* buffer,size_t& word_size, std::vector<size_t>& shape, bool& fortran_order);
+    void parse_npy_header(FILE* fp,std::vector<char> dtype_descr, std::vector<size_t>& shape, bool& fortran_order);
     void parse_zip_footer(FILE* fp, uint16_t& nrecs, size_t& global_header_size, size_t& global_header_offset);
     npz_t npz_load(std::string fname);
     NpyArray npz_load(std::string fname, std::string varname);
@@ -84,6 +85,35 @@ namespace cnpy {
 
     template<> std::vector<char>& operator+=(std::vector<char>& lhs, const std::string rhs);
     template<> std::vector<char>& operator+=(std::vector<char>& lhs, const char* rhs);
+
+
+    template<int N, typename... COLS> constexpr void iterate_dtype(std::vector<char>& descr){
+
+        char endianTest = BigEndianTest();
+
+        descr += "('";
+        descr += std::to_string(N);
+        descr += "', '";
+        descr += endianTest;
+        descr += map_type(typeid(typename std::tuple_element<N,std::tuple<COLS...>>::type));
+        descr += std::to_string(sizeof(typename std::tuple_element<N,std::tuple<COLS...>>::type));
+        descr += "', (1,)";
+        if constexpr(N != sizeof...(COLS)-1){
+            descr += "),";
+            iterate_dtype<N+1,COLS...>(descr);
+        }else{
+            descr += ")";
+        }
+
+    }
+
+    template<typename... COLS> void construct_tuple_dtype(std::vector<char>& descr){
+
+        descr += "[";
+        iterate_dtype<0,COLS...>(descr);
+        descr += "]";
+
+    }
 
     template<int N,typename... COLS> constexpr void iterative_write_data(std::tuple<COLS...> data, const std::vector<size_t>& shape,FILE* fp){
 
@@ -153,6 +183,58 @@ namespace cnpy {
         fwrite(&header[0],sizeof(char),header.size(),fp);
         fseek(fp,0,SEEK_END);
         fwrite(data,sizeof(T),nels,fp);
+        fclose(fp);
+    }
+
+    template<typename... COLS> void npy_save(std::string fname, const std::tuple<COLS...>* data, const std::vector<size_t> shape, std::string mode = "w") {
+        FILE* fp = NULL;
+        std::vector<size_t> true_data_shape; //if appending, the shape of existing + new data
+
+        if(mode == "a") fp = fopen(fname.c_str(),"r+b");
+
+        if(fp) {
+            //file exists. we need to append to it. read the header, modify the array size
+            size_t word_size;
+            bool fortran_order;
+            std::vector<char> dtype;
+            construct_tuple_dtype<COLS...>(dtype);
+            parse_npy_header(fp,dtype,true_data_shape,fortran_order);
+            assert(!fortran_order);
+
+            if(true_data_shape.size() != shape.size()) {
+                std::cout<<"libnpy error: npy_save attempting to append misdimensioned data to "<<fname<<"\n";
+                assert(true_data_shape.size() != shape.size());
+            }
+
+            for(size_t i = 1; i < shape.size(); i++) {
+                if(shape[i] != true_data_shape[i]) {
+                    std::cout<<"libnpy error: npy_save attempting to append misshaped data to "<<fname<<"\n";
+                    assert(shape[i] == true_data_shape[i]);
+                }
+            }
+            true_data_shape[0] += shape[0];
+        }
+        else {
+            fp = fopen(fname.c_str(),"wb");
+            true_data_shape = shape;
+        }
+
+        std::vector<char> header = create_npy_tuple_header<COLS...>(true_data_shape);
+        size_t nels = std::accumulate(shape.begin(),shape.end(),1,std::multiplies<size_t>());
+
+        fseek(fp,0,SEEK_SET);
+        fwrite(&header[0],sizeof(char),header.size(),fp);
+        fseek(fp,0,SEEK_END);
+        size_t len = 1;
+        if(shape.empty()){
+            len = 0;
+        }
+        for(auto d : shape){
+            len *= d;
+        }
+        for(int i;i < len;i++){
+            iterative_write_data<0>(data[i],shape,fp);
+        }
         fclose(fp);
     }
 
@@ -246,7 +328,7 @@ namespace cnpy {
         fclose(fp);
     }
 
-    template<typename... COLS> void npz_save(std::string zipname, std::string fname, const std::vector<std::tuple<COLS...>> data, std::string mode = "w")
+    template<typename... COLS> void npz_save(std::string zipname, std::string fname, const std::tuple<COLS...>* data, const std::vector<size_t>& shape, std::string mode = "w")
     {
         //first, append a .npy to the fname
         fname += ".npy";
@@ -277,17 +359,22 @@ namespace cnpy {
         else {
             fp = fopen(zipname.c_str(),"wb");
         }
-        size_t v_size = data.size();
-        std::vector<size_t> shape = {v_size};
-        std::vector<char> npy_header = create_npy_tuple_header<COLS...>({v_size});
+        std::vector<char> npy_header = create_npy_tuple_header<COLS...>(shape);
 
         size_t nels = std::accumulate(shape.begin(),shape.end(),1,std::multiplies<size_t>());
         size_t nbytes = nels*size_of<0,COLS...>() + npy_header.size();
 
         //get the CRC of the data to be added
+        size_t len = 1;
+        if(shape.empty()){
+            len = 0;
+        }
+        for(auto d : shape){
+            len *= d;
+        }
         uint32_t crc = crc32(0L,(uint8_t*)&npy_header[0],npy_header.size());
-        for(auto d : data)
-            generate_crc<0,COLS...>(crc,d);
+        for(int i;i < len;i++)
+            generate_crc<0,COLS...>(crc,data[i]);
         //crc = crc32(crc,(uint8_t*)data.data(),nels*size_of<0,COLS...>());
 
         //build the local header
@@ -333,10 +420,9 @@ namespace cnpy {
         //write everything
         fwrite(&local_header[0],sizeof(char),local_header.size(),fp);
         fwrite(&npy_header[0],sizeof(char),npy_header.size(),fp);
-        for(auto d : data){
-            iterative_write_data<0>(d,shape,fp);
+        for(int i;i < len;i++){
+            iterative_write_data<0>(data[i],shape,fp);
         }
-        //fwrite(data.data(),size_of<0,COLS...>(),nels,fp);
         fwrite(&global_header[0],sizeof(char),global_header.size(),fp);
         fwrite(&footer[0],sizeof(char),footer.size(),fp);
         fclose(fp);
@@ -348,39 +434,22 @@ namespace cnpy {
         npy_save(fname, &data[0], shape, mode);
     }
 
+    template<typename... COLS> void npy_save(std::string fname, const std::vector<std::tuple<COLS...>> data, std::string mode = "w") {
+        std::vector<size_t> shape;
+        shape.push_back(data.size());
+        npy_save(fname, &data[0], shape, mode);
+    }
+
     template<typename T> void npz_save(std::string zipname, std::string fname, const std::vector<T> data, std::string mode = "w") {
         std::vector<size_t> shape;
         shape.push_back(data.size());
         npz_save(zipname, fname, &data[0], shape, mode);
     }
 
-    template<int N, typename... COLS>
-    constexpr void iterate_dtype(std::vector<char>& descr){
-
-        char endianTest = BigEndianTest();
-
-        descr += "('";
-        descr += std::to_string(N);
-        descr += "', '";
-        descr += endianTest;
-        descr += map_type(typeid(typename std::tuple_element<N,std::tuple<COLS...>>::type));
-        descr += std::to_string(sizeof(typename std::tuple_element<N,std::tuple<COLS...>>::type));
-        descr += "', (1,)";
-        if constexpr(N != sizeof...(COLS)-1){
-            descr += "),";
-            iterate_dtype<N+1,COLS...>(descr);
-        }else{
-            descr += ")";
-        }
-
-    }
-
-    template<typename... COLS> void construct_tuple_dtype(std::vector<char>& descr){
-
-        descr += "[";
-        iterate_dtype<0,COLS...>(descr);
-        descr += "]";
-
+    template<typename... COLS> void npz_save(std::string zipname, std::string fname, const std::vector<std::tuple<COLS...>> data, std::string mode = "w") {
+        std::vector<size_t> shape;
+        shape.push_back(data.size());
+        npz_save<COLS...>(zipname, fname, &data[0], shape, mode);
     }
 
     template<typename... COLS> std::vector<char> create_npy_tuple_header(const std::vector<size_t>& shape) {

@@ -152,6 +152,66 @@ void cnpy::parse_npy_header(FILE* fp, size_t& word_size, std::vector<size_t>& sh
     word_size = atoi(str_ws.substr(0,loc2).c_str());
 }
 
+void cnpy::parse_npy_header(FILE* fp, std::vector<char> dtype_descr, std::vector<size_t>& shape, bool& fortran_order) {
+    char buffer[256];
+    size_t res = fread(buffer,sizeof(char),11,fp);
+    if(res != 11)
+        throw std::runtime_error("parse_npy_header: failed fread");
+    std::string header = fgets(buffer,256,fp);
+    assert(header[header.size()-1] == '\n');
+
+    size_t loc1, loc2;
+
+    //fortran order
+    loc1 = header.find("fortran_order");
+    if (loc1 == std::string::npos)
+        throw std::runtime_error("parse_npy_header: failed to find header keyword: 'fortran_order'");
+    loc1 += 16;
+    fortran_order = (header.substr(loc1,4) == "True" ? true : false);
+
+    //shape
+    size_t loc = header.find("]");
+    if(loc == std::string::npos)
+        throw std::runtime_error("parse_npy_header: failed to find header keyword: ']' signalling end of dtype descriptor");
+    loc1 = header.find("(",loc);
+    loc2 = header.find(")",loc);
+    if (loc1 == std::string::npos || loc2 == std::string::npos)
+        throw std::runtime_error("parse_npy_header: failed to find header keyword: '(' or ')'");
+
+    std::regex num_regex("[0-9][0-9]*");
+    std::smatch sm;
+    shape.clear();
+
+    std::string str_shape = header.substr(loc1+1,loc2-loc1-1);
+    while(std::regex_search(str_shape, sm, num_regex)) {
+        shape.push_back(std::stoi(sm[0].str()));
+        str_shape = sm.suffix().str();
+    }
+
+    // Only enforces matching dtypes
+    loc1 = header.find("[");
+    loc2 = loc;
+    if (loc1 == std::string::npos || loc2 == std::string::npos)
+        throw std::runtime_error("parse_npy_header: failed to find header keyword: '[' or ']'"); // Find bounds of dtype
+
+    std::string descr = header.substr(loc1,loc2-loc1+1);
+    int offset_in = 0;
+    for(int i = 0;i != descr.size();i++){ // Check if found and provided dtype match
+        if(dtype_descr[i+offset_in] == ' '){ // Possible Out Of Bounds, but only if invalid dtype, or if this loop is buggy/the substr gen is buggy
+            offset_in++;
+            i--;
+            continue;
+        }
+        if(descr[i] == ' '){
+            offset_in--;
+            continue;
+        }
+        if(descr[i] != dtype_descr[i+offset_in])
+            throw std::runtime_error("Wrong dtyp of .npy file"); // Can only avoid if corrupt file, but then throws error above
+            // NO error if compatible datatypes (i.e. char and int is <i4 in this framework)
+    }
+}
+
 void cnpy::parse_zip_footer(FILE* fp, uint16_t& nrecs, size_t& global_header_size, size_t& global_header_offset)
 {
     std::vector<char> footer(22);

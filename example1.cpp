@@ -24,6 +24,9 @@ int main()
 
     //save it to file
     cnpy::npy_save("arr1.npy",&data[0],{Nz,Ny,Nx},"w");
+    cnpy::npy_save<char,int,char>("arr2.npy",tuple_array,"w");
+    // try append
+    cnpy::npy_save<char,int,char>("arr2.npy",new std::tuple<char,int,char>('a',5,'g'),{1},"a");
 
     //load it into a new array
     cnpy::NpyArray arr = cnpy::npy_load("arr1.npy");
@@ -36,7 +39,7 @@ int main()
 
     //append the same data to file
     //npy array on file now has shape (Nz+Nz,Ny,Nx)
-//    cnpy::npy_save("arr1.npy",&data[0],{Nz,Ny,Nx},"a");
+    cnpy::npy_save("arr1.npy",&data[0],{Nz,Ny,Nx},"a");
 
     //now write to an npz file
     //non-array variables are treated as 1D arrays with 1 element
@@ -48,14 +51,14 @@ int main()
     cnpy::npz_save<char,int>("out.npz","tuplearr",tuple_array,"a"); //"a" appends to the file we created above
 
     //load a single var from the npz file
-//    cnpy::NpyArray arr2 = cnpy::npz_load("out.npz","arr1");
+    cnpy::NpyArray arr2 = cnpy::npz_load("out.npz","arr1");
 
     //load the entire npz file
-//    cnpy::npz_t my_npz = cnpy::npz_load("out.npz");
+    cnpy::npz_t my_npz = cnpy::npz_load("out.npz");
 
     //check that the loaded myVar1 matches myVar1
-//    cnpy::NpyArray arr_mv1 = my_npz["myVar1"];
-//    double* mv1 = arr_mv1.data<double>();
-//    assert(arr_mv1.shape.size() == 1 && arr_mv1.shape[0] == 1);
-//    assert(mv1[0] == myVar1);
+    cnpy::NpyArray arr_mv1 = my_npz["myVar1"];
+    double* mv1 = arr_mv1.data<double>();
+    assert(arr_mv1.shape.size() == 1 && arr_mv1.shape[0] == 1);
+    assert(mv1[0] == myVar1);
 }
