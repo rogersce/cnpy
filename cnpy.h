@@ -194,7 +194,6 @@ namespace cnpy {
 
         if(fp) {
             //file exists. we need to append to it. read the header, modify the array size
-            size_t word_size;
             bool fortran_order;
             std::vector<char> dtype;
             construct_tuple_dtype<COLS...>(dtype);
@@ -220,7 +219,6 @@ namespace cnpy {
         }
 
         std::vector<char> header = create_npy_tuple_header<COLS...>(true_data_shape);
-        size_t nels = std::accumulate(shape.begin(),shape.end(),1,std::multiplies<size_t>());
 
         fseek(fp,0,SEEK_SET);
         fwrite(&header[0],sizeof(char),header.size(),fp);
@@ -232,7 +230,7 @@ namespace cnpy {
         for(auto d : shape){
             len *= d;
         }
-        for(int i = 0;i < len;i++){
+        for(size_t i = 0;i < len;i++){
             iterative_write_data<0>(data[i],shape,fp);
         }
         fclose(fp);
@@ -373,7 +371,7 @@ namespace cnpy {
             len *= d;
         }
         uint32_t crc = crc32(0L,(uint8_t*)&npy_header[0],npy_header.size());
-        for(int i = 0;i < len;i++)
+        for(size_t i = 0;i < len;i++)
             generate_crc<0,COLS...>(crc,data[i]);
         //crc = crc32(crc,(uint8_t*)data.data(),nels*size_of<0,COLS...>());
 
@@ -420,7 +418,7 @@ namespace cnpy {
         //write everything
         fwrite(&local_header[0],sizeof(char),local_header.size(),fp);
         fwrite(&npy_header[0],sizeof(char),npy_header.size(),fp);
-        for(int i = 0;i < len;i++){
+        for(size_t i = 0;i < len;i++){
             iterative_write_data<0>(data[i],shape,fp);
         }
         fwrite(&global_header[0],sizeof(char),global_header.size(),fp);
