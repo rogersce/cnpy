@@ -28,6 +28,12 @@ char cnpy::map_type(const std::type_info& t)
     if(t == typeid(short) ) return 'i';
     if(t == typeid(long) ) return 'i';
     if(t == typeid(long long) ) return 'i';
+    // These may have different typeids so they must also be included.
+    if(t == typeid(signed int) ) return 'i';
+    if(t == typeid(signed char) ) return 'i';
+    if(t == typeid(signed short) ) return 'i';
+    if(t == typeid(signed long) ) return 'i';
+    if(t == typeid(signed long long) ) return 'i';
 
     if(t == typeid(unsigned char) ) return 'u';
     if(t == typeid(unsigned short) ) return 'u';
