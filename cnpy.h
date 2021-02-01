@@ -97,7 +97,7 @@ namespace cnpy {
         descr += endianTest;
         descr += map_type(typeid(typename std::tuple_element<N,std::tuple<COLS...>>::type));
         descr += std::to_string(sizeof(typename std::tuple_element<N,std::tuple<COLS...>>::type));
-        descr += "', (1,)";
+        descr += "'";
         if constexpr(N != sizeof...(COLS)-1){
             descr += "),";
             iterate_dtype<N+1,COLS...>(descr);
