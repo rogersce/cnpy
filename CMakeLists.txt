@@ -5,7 +5,7 @@ endif(COMMAND cmake_policy)
 
 project(CNPY)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 
 option(ENABLE_STATIC "Build static (.a) library" ON)
 
@@ -22,6 +22,10 @@ if(ENABLE_STATIC)
     set_target_properties(cnpy-static PROPERTIES OUTPUT_NAME "cnpy")
     install(TARGETS "cnpy-static" ARCHIVE DESTINATION lib)
 endif(ENABLE_STATIC)
+
+configure_file("${PROJECT_SOURCE_DIR}/cmake/cnpy-config.cmake.in" "${CMAKE_CURRENT_BINARY_DIR}/cnpy-config.cmake" @ONLY IMMEDIATE)
+install(FILES "${PROJECT_BINARY_DIR}/cnpy-config.cmake" DESTINATION "lib/cmake/cnpy-${PROJECT_VERSION}")
+
 
 install(FILES "cnpy.h" DESTINATION include)
 install(FILES "mat2npz" "npy2mat" "npz2mat" DESTINATION bin PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
