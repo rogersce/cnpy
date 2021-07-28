@@ -189,7 +189,6 @@ cnpy::NpyArray load_the_npy_file(FILE* fp) {
 }
 
 cnpy::NpyArray load_the_npz_array(FILE* fp, uint32_t compr_bytes, uint32_t uncompr_bytes) {
-
     std::vector<unsigned char> buffer_compr(compr_bytes);
     std::vector<unsigned char> buffer_uncompr(uncompr_bytes);
     size_t nread = fread(&buffer_compr[0],1,compr_bytes,fp);
@@ -220,9 +219,17 @@ cnpy::NpyArray load_the_npz_array(FILE* fp, uint32_t compr_bytes, uint32_t uncom
     cnpy::parse_npy_header(&buffer_uncompr[0],word_size,shape,fortran_order);
 
     cnpy::NpyArray array(shape, word_size, fortran_order);
+    
+    auto total_bytes = array.num_vals * word_size;
+    uint8_t ratio = (uncompr_bytes) / total_bytes;
+    array.set_ratio(ratio);
+    array.create_data_holder();
 
     size_t offset = uncompr_bytes - array.num_bytes();
-    memcpy(array.data<unsigned char>(),&buffer_uncompr[0]+offset,array.num_bytes());
+
+    // cout << "Uncompr_bytes: " << uncompr_bytes << ", WordSize: " << word_size << ", ArrayValue: " << array.num_vals <<
+    //     ", Total Bytes: " << total_bytes << ", vecSize: " << array.num_bytes() << endl;
+    memcpy(array.data<unsigned char>(),&buffer_uncompr[0] + offset, array.num_bytes());
 
     return array;
 }

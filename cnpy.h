@@ -18,7 +18,8 @@
 #include<memory>
 #include<stdint.h>
 #include<numeric>
-
+#include<math.h>
+using namespace std;
 namespace cnpy {
 
     struct NpyArray {
@@ -27,11 +28,9 @@ namespace cnpy {
         {
             num_vals = 1;
             for(size_t i = 0;i < shape.size();i++) num_vals *= shape[i];
-            data_holder = std::shared_ptr<std::vector<char>>(
-                new std::vector<char>(num_vals * word_size));
         }
 
-        NpyArray() : shape(0), word_size(0), fortran_order(0), num_vals(0) { }
+        NpyArray() : shape(0), word_size(0), fortran_order(0), num_vals(0), char_ratio(1) {}
 
         template<typename T>
         T* data() {
@@ -49,8 +48,46 @@ namespace cnpy {
             return std::vector<T>(p, p+num_vals);
         }
 
+        template<typename T>
+        std::vector<vector<pair<T, T>>> as_vec(const uint32_t& length) const {
+
+            const char* p = data<char>();
+            
+            std::vector<vector<pair<T, T>>> vecData;
+            const uint32_t dataLength = num_vals / length;
+            for(size_t j = 0; j < num_vals / dataLength; ++j) {
+                vector<pair<T, T>> pricingQty;
+                for(size_t i = 0; i < dataLength; i += 2) {
+                    
+                    auto cValue1 = p + (j*word_size*dataLength*char_ratio + i*word_size*char_ratio);
+                    auto cValue2 = p + (j*word_size*dataLength*char_ratio + (i+1)*word_size*char_ratio);
+                    auto value1 = *reinterpret_cast<T*>(const_cast<char*>(cValue1));
+                    auto value2 = *reinterpret_cast<T*>(const_cast<char*>(cValue2));
+                    
+                    if (isnan(value1)) {
+                        value1 = -1;
+                    }
+                    if (isnan(value2)) {
+                        value2 = -1;
+                    }
+                    pricingQty.emplace_back(make_pair(value1, value2));
+                }
+                vecData.emplace_back(pricingQty);
+            }
+            return vecData;
+        }
+
         size_t num_bytes() const {
             return data_holder->size();
+        }
+
+        void set_ratio(uint8_t ratio) {
+            char_ratio = ratio;
+        }
+
+        void create_data_holder() {
+            data_holder = std::shared_ptr<std::vector<char>>(
+                new std::vector<char>(num_vals * word_size * char_ratio));
         }
 
         std::shared_ptr<std::vector<char>> data_holder;
@@ -58,8 +95,33 @@ namespace cnpy {
         size_t word_size;
         bool fortran_order;
         size_t num_vals;
+        uint8_t char_ratio = 1;
     };
-   
+    
+    template <>
+    inline std::vector<string> NpyArray::as_vec() const {
+        const char* p = data<char>();
+        std::vector<string> vecData;
+        for(size_t j = 0; j < num_vals; ++j) {
+            string value = "";
+            for(size_t i = 0; i < word_size; ++i) {
+                auto tempValue = p + (j*word_size*char_ratio + i*char_ratio);
+                if (!tempValue) {
+                    continue;
+                }
+                value += tempValue;
+            }
+            vecData.emplace_back(value);
+        }
+        return vecData;
+    }
+
+    template<>
+    inline std::vector<vector<pair<string, string>>> NpyArray::as_vec(const uint32_t& length) const {
+        cout << "Unsupported type!" << endl;
+        exit(1);
+    }
+
     using npz_t = std::map<std::string, NpyArray>; 
 
     char BigEndianTest();
