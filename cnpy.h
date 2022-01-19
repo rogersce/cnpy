@@ -84,9 +84,8 @@ namespace cnpy {
     template<> std::vector<char>& operator+=(std::vector<char>& lhs, const std::string rhs);
     template<> std::vector<char>& operator+=(std::vector<char>& lhs, const char* rhs);
 
-
-    template<typename T> void npy_save(std::string fname, const T* data, const std::vector<size_t> shape, std::string mode = "w") {
-        FILE* fp = NULL;
+    template<typename T> void npy_save_head(FILE*& fp, std::string fname, const std::vector<size_t> shape, std::string mode = "w") {
+        fp = NULL;
         std::vector<size_t> true_data_shape; //if appending, the shape of existing + new data
 
         if(mode == "a") fp = fopen(fname.c_str(),"r+b");
@@ -121,12 +120,21 @@ namespace cnpy {
         }
 
         std::vector<char> header = create_npy_header<T>(true_data_shape);
-        size_t nels = std::accumulate(shape.begin(),shape.end(),1,std::multiplies<size_t>());
 
         fseek(fp,0,SEEK_SET);
         fwrite(&header[0],sizeof(char),header.size(),fp);
+    }
+
+    template<typename T> void npy_save_body(FILE* fp, const T* data, const std::vector<size_t> shape) {
+        size_t nels = std::accumulate(shape.begin(),shape.end(),1,std::multiplies<size_t>());
         fseek(fp,0,SEEK_END);
         fwrite(data,sizeof(T),nels,fp);
+    } 
+
+    template<typename T> void npy_save(std::string fname, const T* data, const std::vector<size_t> shape, std::string mode = "w") {
+        FILE* fp = NULL;
+        npy_save_head<T>(fp, fname, shape, mode);
+        npy_save_body<T>(fp, data, shape);
         fclose(fp);
     }
 
