@@ -14,6 +14,15 @@ find_package(ZLIB REQUIRED)
 include_directories(${ZLIB_INCLUDE_DIRS})
 
 add_library(cnpy SHARED "cnpy.cpp")
+# create alias with exported name for including via find_package or FetchContent
+add_library(Cnpy::Cnpy ALIAS cnpy)
+target_include_directories(cnpy
+    PUBLIC
+      $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+      $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    PRIVATE
+      ${CMAKE_SOURCE_DIR}
+)
 target_link_libraries(cnpy ${ZLIB_LIBRARIES})
 
 include(GNUInstallDirs)
@@ -72,3 +81,4 @@ install(FILES
     ${CMAKE_CURRENT_BINARY_DIR}/CnpyConfigVersion.cmake
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Cnpy
 )
+
