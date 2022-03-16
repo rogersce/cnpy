@@ -1,0 +1,10 @@
+get_filename_component(Cnpy_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+include(CMakeFindDependencyMacro)
+
+find_dependency(ZLIB REQUIRED)
+
+if(NOT TARGET Cnpy::Cnpy)
+    include("${Cnpy_CMAKE_DIR}/CnpyTargets.cmake")
+endif()
+
+set(CNPY_lIBRARIES Cnpy::Cnpy)
