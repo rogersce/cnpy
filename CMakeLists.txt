@@ -19,9 +19,7 @@ add_library(Cnpy::Cnpy ALIAS cnpy)
 target_include_directories(cnpy
     PUBLIC
       $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-      $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    PRIVATE
-      ${CMAKE_SOURCE_DIR}
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
 )
 target_link_libraries(cnpy ${ZLIB_LIBRARIES})
 
