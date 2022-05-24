@@ -29,6 +29,7 @@ else()
   set(ENABLE_STATIC ON)
   # create alias with exported name for including via find_package or FetchContent
   add_library(Cnpy::Cnpy ALIAS cnpy-static)
+  link_directories("/opt/local/lib")
   target_link_libraries(cnpy "-lz")
 endif()
 
