@@ -14,6 +14,8 @@ find_package(ZLIB REQUIRED)
 include_directories(${ZLIB_INCLUDE_DIRS})
 
 add_library(cnpy SHARED "cnpy.cpp")
+# create alias with exported name for including via find_package or FetchContent
+add_library(Cnpy::Cnpy ALIAS cnpy)
 
 target_include_directories(cnpy
     PUBLIC
@@ -21,14 +23,8 @@ target_include_directories(cnpy
       $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
 )
 if(NOT iOS)
-  # create alias with exported name for including via find_package or FetchContent
-  add_library(Cnpy::Cnpy ALIAS cnpy)
   target_link_libraries(cnpy ${ZLIB_LIBRARIES})
 else()
-  # build static for iOS
-  set(ENABLE_STATIC ON)
-  # create alias with exported name for including via find_package or FetchContent
-  add_library(Cnpy::Cnpy ALIAS cnpy-static)
   link_directories("/opt/local/lib")
   target_link_libraries(cnpy "-lz")
 endif()
