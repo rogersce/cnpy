@@ -9,10 +9,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 option(ENABLE_STATIC "Build static (.a) library" ON)
 
-if(iOS)
-  link_directories("/opt/local/lib")
-endif()
-
 add_library(cnpy SHARED "cnpy.cpp")
 # create alias with exported name for including via find_package or FetchContent
 add_library(Cnpy::Cnpy ALIAS cnpy)
