@@ -1,7 +1,7 @@
 get_filename_component(Cnpy_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
 include(CMakeFindDependencyMacro)
 
-if(NOT iOS)
+if(NOT IOS)
     find_dependency(ZLIB REQUIRED)
 endif()
 

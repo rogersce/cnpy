@@ -18,7 +18,7 @@ target_include_directories(cnpy
       $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
       $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
 )
-if(NOT iOS)
+if(NOT IOS)
   find_package(ZLIB REQUIRED)
   target_link_libraries(cnpy ZLIB::ZLIB)
 else()
@@ -46,7 +46,7 @@ endif(ENABLE_STATIC)
 
 install(FILES "cnpy.h" DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
-if (NOT iOS)
+if (NOT IOS)
   # don't install extra utils under iOS
   install(FILES "mat2npz" "npy2mat" "npz2mat"
       DESTINATION bin
