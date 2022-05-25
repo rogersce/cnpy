@@ -22,7 +22,7 @@ if(NOT IOS)
   find_package(ZLIB REQUIRED)
   target_link_libraries(cnpy ZLIB::ZLIB)
 else()
-  target_link_libraries(cnpy)
+  target_link_libraries(cnpy "-lz")
 endif()
 
 include(GNUInstallDirs)
