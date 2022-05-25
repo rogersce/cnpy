@@ -1,7 +1,9 @@
 get_filename_component(Cnpy_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
 include(CMakeFindDependencyMacro)
 
-find_dependency(ZLIB REQUIRED)
+if(NOT iOS)
+    find_dependency(ZLIB REQUIRED)
+endif()
 
 if(NOT TARGET Cnpy::Cnpy)
     include("${Cnpy_CMAKE_DIR}/CnpyTargets.cmake")
