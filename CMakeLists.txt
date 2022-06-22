@@ -21,6 +21,7 @@ install(TARGETS "cnpy" LIBRARY DESTINATION lib PERMISSIONS OWNER_READ OWNER_WRIT
 if(ENABLE_STATIC)
     add_library(cnpy-static STATIC "cnpy.cpp")
     target_include_directories(cnpy-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(cnpy-static PUBLIC ${ZLIB_LIBRARIES})
     set_target_properties(cnpy-static PROPERTIES OUTPUT_NAME "cnpy")
     install(TARGETS "cnpy-static" ARCHIVE DESTINATION lib)
 endif(ENABLE_STATIC)
