@@ -169,7 +169,9 @@ namespace cnpy {
 
         //get the CRC of the data to be added
         uint32_t crc = crc32(0L,(uint8_t*)&npy_header[0],npy_header.size());
-        crc = crc32(crc,(uint8_t*)data,nels*sizeof(T));
+
+        if (nels)
+            crc = crc32(crc,(uint8_t*)data,nels*sizeof(T));
 
         //build the local header
         std::vector<char> local_header;
