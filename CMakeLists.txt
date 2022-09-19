@@ -1,4 +1,4 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.0 FATAL_ERROR)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.11 FATAL_ERROR)
 if(COMMAND cmake_policy)
 	cmake_policy(SET CMP0003 NEW)
 endif(COMMAND cmake_policy)
@@ -9,12 +9,27 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 option(ENABLE_STATIC "Build static (.a) library" ON)
 
-find_package(ZLIB REQUIRED)
+option(DOWNLOAD_ZLIB "Download Zlib with FetchContent" ON)
+
+if(DOWNLOAD_ZLIB)
+    include(FetchContent)
+    FetchContent_Declare(
+    zlib
+    URL https://zlib.net/zlib-1.2.12.tar.gz
+    )
+    FetchContent_MakeAvailable(zlib)
+    set(ZLIB_LINK zlib)
+else()
+    find_package(ZLIB REQUIRED)
+    include_directories(${ZLIB_INCLUDE_DIRS})
+    set(ZLIB_LINK ${ZLIB_LIBRARIES})
+endif(DOWNLOAD_ZLIB)
 
 include_directories(${ZLIB_INCLUDE_DIRS})
 
 add_library(cnpy SHARED "cnpy.cpp")
-target_link_libraries(cnpy ${ZLIB_LIBRARIES})
+target_link_libraries(cnpy ${ZLIB_LINK})
+
 install(TARGETS "cnpy" LIBRARY DESTINATION lib PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 
 if(ENABLE_STATIC)
