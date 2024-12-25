@@ -30,6 +30,24 @@ To use, `#include"cnpy.h"` in your source code. Compile the source code mycode.c
 ```bash
 g++ -o mycode mycode.cpp -L/path/to/install/dir -lcnpy -lz --std=c++11
 ```
+## Include In Premake 
+- just clone it and add the path to the `includedirs`
+- link it with the project
+- includ The path in the group that you group the you want
+```lua
+includedirs {
+   "../path/from/lua_premake/to/cnpy", -- add the path 
+}
+links {
+-- link it with the project
+   "cnpy" 
+}
+ 
+group "Dependencies"
+   include "../path/from/lua_premake/to/cnpy" -- add the path 
+group ""
+
+```
 
 # Description:
 
