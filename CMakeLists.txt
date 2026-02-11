@@ -8,7 +8,7 @@ project(CNPY)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(ZLIB REQUIRED)
+option(CNPY_WITH_ZLIB "Enable .npz support via zlib" ON)
 
 add_library(cnpy INTERFACE)
 target_include_directories(cnpy
@@ -16,7 +16,20 @@ target_include_directories(cnpy
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
 )
-target_link_libraries(cnpy INTERFACE ZLIB::ZLIB)
+
+if(CNPY_WITH_ZLIB)
+    find_package(ZLIB)
+    if(ZLIB_FOUND)
+        target_link_libraries(cnpy INTERFACE ZLIB::ZLIB)
+        target_compile_definitions(cnpy INTERFACE CNPY_HAS_ZLIB=1)
+    else()
+        message(FATAL_ERROR
+            "CNPY_WITH_ZLIB is ON, but zlib was not found. Install the zlib development package (e.g., zlib1g-dev), or configure with -DCNPY_WITH_ZLIB=OFF for .npy-only support."
+        )
+    endif()
+else()
+    target_compile_definitions(cnpy INTERFACE CNPY_HAS_ZLIB=0)
+endif()
 
 install(TARGETS cnpy EXPORT cnpyTargets)
 install(DIRECTORY include/ DESTINATION include)

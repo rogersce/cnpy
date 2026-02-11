@@ -32,22 +32,28 @@ Include the library in your code:
 #include <cnpy/cnpy.h>
 ```
 
-Compile your program (header-only + zlib):
+Compile your program:
 
 ```bash
+# .npy + .npz (requires zlib)
 g++ -o mycode mycode.cpp -I/path/to/install/dir/include -lz --std=c++11
+
+# .npy only
+g++ -o mycode mycode.cpp -I/path/to/install/dir/include -DCNPY_HAS_ZLIB=0 --std=c++11
 ```
+
+If you build via CMake, `.npz` support is controlled by `CNPY_WITH_ZLIB` (default `ON`). Configure with `-DCNPY_WITH_ZLIB=OFF` for `.npy`-only builds.
 
 # API overview
 
 There are two functions for writing data:
 - `npy_save`
-- `npz_save`
+- `npz_save` *(available when `CNPY_HAS_ZLIB=1`)*
 
 There are three functions for reading:
 - `npy_load` loads a `.npy`
-- `npz_load(fname)` loads a `.npz` into a map of `NpyArray`
-- `npz_load(fname,varname)` loads one variable from a `.npz`
+- `npz_load(fname)` loads a `.npz` into a map of `NpyArray` *(available when `CNPY_HAS_ZLIB=1`)*
+- `npz_load(fname,varname)` loads one variable from a `.npz` *(available when `CNPY_HAS_ZLIB=1`)*
 
 Loaded data is represented by:
 

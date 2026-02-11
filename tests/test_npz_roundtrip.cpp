@@ -6,6 +6,7 @@
 #include <vector>
 
 int main() {
+#if CNPY_HAS_ZLIB
     const std::string file = "test_npz_roundtrip.npz";
     std::vector<int> values = {10, 20, 30, 40};
     double scalar = 42.5;
@@ -31,5 +32,6 @@ int main() {
     assert(*scalar_ptr == scalar);
 
     std::remove(file.c_str());
+#endif
     return 0;
 }

@@ -23,7 +23,13 @@
 #include <typeinfo>
 #include <vector>
 
+#ifndef CNPY_HAS_ZLIB
+#define CNPY_HAS_ZLIB 1
+#endif
+
+#if CNPY_HAS_ZLIB
 #include <zlib.h>
+#endif
 
 namespace cnpy {
 
@@ -274,6 +280,7 @@ inline NpyArray load_the_npy_file(FILE* fp) {
     return arr;
 }
 
+#if CNPY_HAS_ZLIB
 inline NpyArray load_the_npz_array(FILE* fp, uint32_t compr_bytes, uint32_t uncompr_bytes) {
     std::vector<unsigned char> buffer_compr(compr_bytes);
     std::vector<unsigned char> buffer_uncompr(uncompr_bytes);
@@ -310,8 +317,10 @@ inline NpyArray load_the_npz_array(FILE* fp, uint32_t compr_bytes, uint32_t unco
 
     return array;
 }
+#endif
 }  // namespace detail
 
+#if CNPY_HAS_ZLIB
 inline npz_t npz_load(std::string fname) {
     FILE* fp = fopen(fname.c_str(), "rb");
     if (!fp) {
@@ -411,6 +420,16 @@ inline NpyArray npz_load(std::string fname, std::string varname) {
     throw std::runtime_error("npz_load: Variable name " + varname + " not found in " + fname);
 }
 
+#else
+inline npz_t npz_load(std::string) {
+    throw std::runtime_error("npz_load: cnpy was built without zlib support (CNPY_HAS_ZLIB=0)");
+}
+
+inline NpyArray npz_load(std::string, std::string) {
+    throw std::runtime_error("npz_load: cnpy was built without zlib support (CNPY_HAS_ZLIB=0)");
+}
+#endif
+
 inline NpyArray npy_load(std::string fname) {
     FILE* fp = fopen(fname.c_str(), "rb");
     if (!fp) {
@@ -467,6 +486,7 @@ void npy_save(std::string fname, const T* data, const std::vector<size_t> shape,
     fclose(fp);
 }
 
+#if CNPY_HAS_ZLIB
 template <typename T>
 void npz_save(std::string zipname, std::string fname, const T* data, const std::vector<size_t>& shape,
               std::string mode = "w") {
@@ -546,6 +566,13 @@ void npz_save(std::string zipname, std::string fname, const T* data, const std::
     fclose(fp);
 }
 
+#else
+template <typename T>
+void npz_save(std::string, std::string, const T*, const std::vector<size_t>&, std::string = "w") {
+    throw std::runtime_error("npz_save: cnpy was built without zlib support (CNPY_HAS_ZLIB=0)");
+}
+#endif
+
 template <typename T>
 void npy_save(std::string fname, const std::vector<T> data, std::string mode = "w") {
     std::vector<size_t> shape;
@@ -555,9 +582,17 @@ void npy_save(std::string fname, const std::vector<T> data, std::string mode = "
 
 template <typename T>
 void npz_save(std::string zipname, std::string fname, const std::vector<T> data, std::string mode = "w") {
+#if CNPY_HAS_ZLIB
     std::vector<size_t> shape;
     shape.push_back(data.size());
     npz_save(zipname, fname, &data[0], shape, mode);
+#else
+    (void)zipname;
+    (void)fname;
+    (void)data;
+    (void)mode;
+    throw std::runtime_error("npz_save: cnpy was built without zlib support (CNPY_HAS_ZLIB=0)");
+#endif
 }
 
 }  // namespace cnpy
