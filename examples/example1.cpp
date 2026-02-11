@@ -1,4 +1,4 @@
-#include"cnpy.h"
+#include <cnpy/cnpy.h>
 #include<complex>
 #include<cstdlib>
 #include<iostream>
