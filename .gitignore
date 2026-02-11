@@ -1,0 +1,73 @@
+# Build directories
+build/
+cmake-build-*/
+out/
+
+# Compiled files
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.exe
+
+# CMake files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+compile_commands.json
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# Log files
+*.log
+
+# Test outputs
+test_results/
+coverage/
+
+# Binary files that might be generated
+*.bin
+*.dat
+
+# Dependencies
+vendor/
+third-party/
+
+# Documentation builds
+_docs/
+doc/_build/
+
+# Package manager files
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor backup files
+*~
+.#*
+*.bak
+*.tmp
+
+# CI/CD
+.github/
+.gitlab/
+
+# Tools outputs
+tools/mat2npz
+tools/npy2mat
+tools/npz2mat

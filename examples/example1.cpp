@@ -1,4 +1,4 @@
-#include"cnpy.h"
+#include <cnpy/cnpy.h>
 #include<complex>
 #include<cstdlib>
 #include<iostream>
@@ -23,7 +23,7 @@ int main()
     //load it into a new array
     cnpy::NpyArray arr = cnpy::npy_load("arr1.npy");
     std::complex<double>* loaded_data = arr.data<std::complex<double>>();
-    
+
     //make sure the loaded data matches the saved data
     assert(arr.word_size == sizeof(std::complex<double>));
     assert(arr.shape.size() == 3 && arr.shape[0] == Nz && arr.shape[1] == Ny && arr.shape[2] == Nx);
@@ -33,6 +33,7 @@ int main()
     //npy array on file now has shape (Nz+Nz,Ny,Nx)
     cnpy::npy_save("arr1.npy",&data[0],{Nz,Ny,Nx},"a");
 
+#if CNPY_HAS_ZLIB
     //now write to an npz file
     //non-array variables are treated as 1D arrays with 1 element
     double myVar1 = 1.2;
@@ -46,10 +47,13 @@ int main()
 
     //load the entire npz file
     cnpy::npz_t my_npz = cnpy::npz_load("out.npz");
-    
+
     //check that the loaded myVar1 matches myVar1
     cnpy::NpyArray arr_mv1 = my_npz["myVar1"];
     double* mv1 = arr_mv1.data<double>();
     assert(arr_mv1.shape.size() == 1 && arr_mv1.shape[0] == 1);
     assert(mv1[0] == myVar1);
+#else
+    std::cout << "Built without zlib: skipping .npz example." << std::endl;
+#endif
 }
