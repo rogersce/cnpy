@@ -26,7 +26,13 @@ namespace cnpy {
             shape(_shape), word_size(_word_size), fortran_order(_fortran_order)
         {
             num_vals = 1;
-            for(size_t i = 0;i < shape.size();i++) num_vals *= shape[i];
+            for(size_t i = 0;i < shape.size();i++) {
+                if(shape[i] != 0 && num_vals > (size_t(-1)) / shape[i])
+                    throw std::runtime_error("NpyArray: shape product overflows size_t");
+                num_vals *= shape[i];
+            }
+            if(word_size != 0 && num_vals > (size_t(-1)) / word_size)
+                throw std::runtime_error("NpyArray: total allocation size overflows size_t");
             data_holder = std::shared_ptr<std::vector<char>>(
                 new std::vector<char>(num_vals * word_size));
         }
@@ -66,7 +72,7 @@ namespace cnpy {
     char map_type(const std::type_info& t);
     template<typename T> std::vector<char> create_npy_header(const std::vector<size_t>& shape);
     void parse_npy_header(FILE* fp,size_t& word_size, std::vector<size_t>& shape, bool& fortran_order);
-    void parse_npy_header(unsigned char* buffer,size_t& word_size, std::vector<size_t>& shape, bool& fortran_order);
+    void parse_npy_header(unsigned char* buffer, size_t buffer_size, size_t& word_size, std::vector<size_t>& shape, bool& fortran_order);
     void parse_zip_footer(FILE* fp, uint16_t& nrecs, size_t& global_header_size, size_t& global_header_offset);
     npz_t npz_load(std::string fname);
     NpyArray npz_load(std::string fname, std::string varname);
