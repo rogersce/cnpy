@@ -33,12 +33,18 @@ g++ -o mycode mycode.cpp -L/path/to/install/dir -lcnpy -lz --std=c++11
 
 # Description:
 
-There are two functions for writing data: `npy_save` and `npz_save`.
+There are three functions for writing data: `npy_save`, `npz_save`, and `npz_save_compressed`.
+
+- `npy_save` saves a single array to a .npy file.
+- `npz_save` saves arrays to a .npz file. Accepts an optional `compress` parameter (default: false) to enable zlib deflate compression.
+- `npz_save_compressed` convenience wrapper that calls `npz_save` with compression enabled (equivalent to `numpy.savez_compressed`).
 
 There are 3 functions for reading:
 - `npy_load` will load a .npy file. 
-- `npz_load(fname)` will load a .npz and return a dictionary of NpyArray structues. 
+- `npz_load(fname)` will load a .npz and return a dictionary of NpyArray structures. 
 - `npz_load(fname,varname)` will load and return the NpyArray for data varname from the specified .npz file.
+
+Both compressed and uncompressed .npz files are supported for reading, including files created by `numpy.savez_compressed()` which use ZIP64 format.
 
 The data structure for loaded data is below. 
 Data is accessed via the `data<T>()`-method, which returns a pointer of the specified type (which must match the underlying datatype of the data). 

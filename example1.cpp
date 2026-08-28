@@ -52,4 +52,33 @@ int main()
     double* mv1 = arr_mv1.data<double>();
     assert(arr_mv1.shape.size() == 1 && arr_mv1.shape[0] == 1);
     assert(mv1[0] == myVar1);
+
+    //now test compressed npz files
+    std::cout << "Testing compressed npz save/load..." << std::endl;
+    
+    //save compressed data
+    cnpy::npz_save_compressed("out_compressed.npz","myVar1",&myVar1,{1},"w");
+    cnpy::npz_save_compressed("out_compressed.npz","arr1",&data[0],{Nz,Ny,Nx},"a");
+    
+    //load and verify the compressed file
+    cnpy::npz_t my_npz_compressed = cnpy::npz_load("out_compressed.npz");
+    
+    //check myVar1
+    cnpy::NpyArray arr_mv1_c = my_npz_compressed["myVar1"];
+    double* mv1_c = arr_mv1_c.data<double>();
+    assert(arr_mv1_c.shape.size() == 1 && arr_mv1_c.shape[0] == 1);
+    assert(mv1_c[0] == myVar1);
+    
+    //check arr1
+    cnpy::NpyArray arr1_c = my_npz_compressed["arr1"];
+    std::complex<double>* arr1_data_c = arr1_c.data<std::complex<double>>();
+    assert(arr1_c.shape.size() == 3 && arr1_c.shape[0] == Nz && arr1_c.shape[1] == Ny && arr1_c.shape[2] == Nx);
+    for(int i = 0; i < Nx*Ny*Nz; i++) assert(data[i] == arr1_data_c[i]);
+    
+    //also test loading a single variable from compressed file
+    cnpy::NpyArray arr1_single = cnpy::npz_load("out_compressed.npz", "arr1");
+    std::complex<double>* arr1_single_data = arr1_single.data<std::complex<double>>();
+    for(int i = 0; i < Nx*Ny*Nz; i++) assert(data[i] == arr1_single_data[i]);
+    
+    std::cout << "Compressed npz test passed!" << std::endl;
 }

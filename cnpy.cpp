@@ -12,6 +12,12 @@
 #include<stdexcept>
 #include <regex>
 
+template<typename T> static T read_unaligned(const void* source) {
+    T value;
+    memcpy(&value, source, sizeof(T));
+    return value;
+}
+
 char cnpy::BigEndianTest() {
     int x = 1;
     return (((char *)&x)[0]) ? '<' : '>';
@@ -63,7 +69,7 @@ void cnpy::parse_npy_header(unsigned char* buffer,size_t& word_size, std::vector
     //std::string magic_string(buffer,6);
     uint8_t major_version = *reinterpret_cast<uint8_t*>(buffer+6);
     uint8_t minor_version = *reinterpret_cast<uint8_t*>(buffer+7);
-    uint16_t header_len = *reinterpret_cast<uint16_t*>(buffer+8);
+    uint16_t header_len = read_unaligned<uint16_t>(buffer+8);
     std::string header(reinterpret_cast<char*>(buffer+9),header_len);
 
     size_t loc1, loc2;
@@ -93,12 +99,13 @@ void cnpy::parse_npy_header(unsigned char* buffer,size_t& word_size, std::vector
     bool littleEndian = (header[loc1] == '<' || header[loc1] == '|' ? true : false);
     assert(littleEndian);
 
-    //char type = header[loc1+1];
+    char type = header[loc1+1];
     //assert(type == map_type(T));
 
     std::string str_ws = header.substr(loc1+2);
     loc2 = str_ws.find("'");
     word_size = atoi(str_ws.substr(0,loc2).c_str());
+    if(type == 'U') word_size *= 4;
 }
 
 void cnpy::parse_npy_header(FILE* fp, size_t& word_size, std::vector<size_t>& shape, bool& fortran_order) {  
@@ -144,12 +151,13 @@ void cnpy::parse_npy_header(FILE* fp, size_t& word_size, std::vector<size_t>& sh
     bool littleEndian = (header[loc1] == '<' || header[loc1] == '|' ? true : false);
     assert(littleEndian);
 
-    //char type = header[loc1+1];
+    char type = header[loc1+1];
     //assert(type == map_type(T));
 
     std::string str_ws = header.substr(loc1+2);
     loc2 = str_ws.find("'");
     word_size = atoi(str_ws.substr(0,loc2).c_str());
+    if(type == 'U') word_size *= 4;
 }
 
 void cnpy::parse_zip_footer(FILE* fp, uint16_t& nrecs, size_t& global_header_size, size_t& global_header_offset)
@@ -161,13 +169,13 @@ void cnpy::parse_zip_footer(FILE* fp, uint16_t& nrecs, size_t& global_header_siz
         throw std::runtime_error("parse_zip_footer: failed fread");
 
     uint16_t disk_no, disk_start, nrecs_on_disk, comment_len;
-    disk_no = *(uint16_t*) &footer[4];
-    disk_start = *(uint16_t*) &footer[6];
-    nrecs_on_disk = *(uint16_t*) &footer[8];
-    nrecs = *(uint16_t*) &footer[10];
-    global_header_size = *(uint32_t*) &footer[12];
-    global_header_offset = *(uint32_t*) &footer[16];
-    comment_len = *(uint16_t*) &footer[20];
+    disk_no = read_unaligned<uint16_t>(&footer[4]);
+    disk_start = read_unaligned<uint16_t>(&footer[6]);
+    nrecs_on_disk = read_unaligned<uint16_t>(&footer[8]);
+    nrecs = read_unaligned<uint16_t>(&footer[10]);
+    global_header_size = read_unaligned<uint32_t>(&footer[12]);
+    global_header_offset = read_unaligned<uint32_t>(&footer[16]);
+    comment_len = read_unaligned<uint16_t>(&footer[20]);
 
     assert(disk_no == 0);
     assert(disk_start == 0);
@@ -188,6 +196,24 @@ cnpy::NpyArray load_the_npy_file(FILE* fp) {
     return arr;
 }
 
+// Helper function to parse ZIP64 extended info from extra field
+void parse_zip64_sizes(const std::vector<char>& extra_field, uint32_t& compr_bytes, uint32_t& uncompr_bytes) {
+    if(extra_field.size() >= 4 && (compr_bytes == 0xFFFFFFFF || uncompr_bytes == 0xFFFFFFFF)) {
+        uint16_t extra_id = read_unaligned<uint16_t>(&extra_field[0]);
+        uint16_t extra_size = read_unaligned<uint16_t>(&extra_field[2]);
+        if(extra_id == 0x0001 && extra_size >= 16) { // ZIP64 extended info
+            size_t offset = 4;
+            if(uncompr_bytes == 0xFFFFFFFF) {
+                uncompr_bytes = static_cast<uint32_t>(read_unaligned<uint64_t>(&extra_field[offset]));
+                offset += 8;
+            }
+            if(compr_bytes == 0xFFFFFFFF) {
+                compr_bytes = static_cast<uint32_t>(read_unaligned<uint64_t>(&extra_field[offset]));
+            }
+        }
+    }
+}
+
 cnpy::NpyArray load_the_npz_array(FILE* fp, uint32_t compr_bytes, uint32_t uncompr_bytes) {
 
     std::vector<unsigned char> buffer_compr(compr_bytes);
@@ -205,6 +231,8 @@ cnpy::NpyArray load_the_npz_array(FILE* fp, uint32_t compr_bytes, uint32_t uncom
     d_stream.avail_in = 0;
     d_stream.next_in = Z_NULL;
     err = inflateInit2(&d_stream, -MAX_WBITS);
+    if(err != Z_OK)
+        throw std::runtime_error("load_the_npz_array: inflateInit2 failed");
 
     d_stream.avail_in = compr_bytes;
     d_stream.next_in = &buffer_compr[0];
@@ -212,7 +240,13 @@ cnpy::NpyArray load_the_npz_array(FILE* fp, uint32_t compr_bytes, uint32_t uncom
     d_stream.next_out = &buffer_uncompr[0];
 
     err = inflate(&d_stream, Z_FINISH);
+    if(err != Z_STREAM_END) {
+        inflateEnd(&d_stream);
+        throw std::runtime_error("load_the_npz_array: inflate failed");
+    }
     err = inflateEnd(&d_stream);
+    if(err != Z_OK)
+        throw std::runtime_error("load_the_npz_array: inflateEnd failed");
 
     std::vector<size_t> shape;
     size_t word_size;
@@ -246,7 +280,7 @@ cnpy::npz_t cnpy::npz_load(std::string fname) {
         if(local_header[2] != 0x03 || local_header[3] != 0x04) break;
 
         //read in the variable name
-        uint16_t name_len = *(uint16_t*) &local_header[26];
+        uint16_t name_len = read_unaligned<uint16_t>(&local_header[26]);
         std::string varname(name_len,' ');
         size_t vname_res = fread(&varname[0],sizeof(char),name_len,fp);
         if(vname_res != name_len)
@@ -256,17 +290,20 @@ cnpy::npz_t cnpy::npz_load(std::string fname) {
         varname.erase(varname.end()-4,varname.end());
 
         //read in the extra field
-        uint16_t extra_field_len = *(uint16_t*) &local_header[28];
+        uint16_t extra_field_len = read_unaligned<uint16_t>(&local_header[28]);
+        std::vector<char> extra_field(extra_field_len);
         if(extra_field_len > 0) {
-            std::vector<char> buff(extra_field_len);
-            size_t efield_res = fread(&buff[0],sizeof(char),extra_field_len,fp);
+            size_t efield_res = fread(&extra_field[0],sizeof(char),extra_field_len,fp);
             if(efield_res != extra_field_len)
                 throw std::runtime_error("npz_load: failed fread");
         }
 
-        uint16_t compr_method = *reinterpret_cast<uint16_t*>(&local_header[0]+8);
-        uint32_t compr_bytes = *reinterpret_cast<uint32_t*>(&local_header[0]+18);
-        uint32_t uncompr_bytes = *reinterpret_cast<uint32_t*>(&local_header[0]+22);
+        uint16_t compr_method = read_unaligned<uint16_t>(&local_header[0]+8);
+        uint32_t compr_bytes = read_unaligned<uint32_t>(&local_header[0]+18);
+        uint32_t uncompr_bytes = read_unaligned<uint32_t>(&local_header[0]+22);
+
+        // ZIP64 support: if sizes are 0xFFFFFFFF, read from extra field
+        parse_zip64_sizes(extra_field, compr_bytes, uncompr_bytes);
 
         if(compr_method == 0) {arrays[varname] = load_the_npy_file(fp);}
         else {arrays[varname] = load_the_npz_array(fp,compr_bytes,uncompr_bytes);}
@@ -291,7 +328,7 @@ cnpy::NpyArray cnpy::npz_load(std::string fname, std::string varname) {
         if(local_header[2] != 0x03 || local_header[3] != 0x04) break;
 
         //read in the variable name
-        uint16_t name_len = *(uint16_t*) &local_header[26];
+        uint16_t name_len = read_unaligned<uint16_t>(&local_header[26]);
         std::string vname(name_len,' ');
         size_t vname_res = fread(&vname[0],sizeof(char),name_len,fp);      
         if(vname_res != name_len)
@@ -299,12 +336,20 @@ cnpy::NpyArray cnpy::npz_load(std::string fname, std::string varname) {
         vname.erase(vname.end()-4,vname.end()); //erase the lagging .npy
 
         //read in the extra field
-        uint16_t extra_field_len = *(uint16_t*) &local_header[28];
-        fseek(fp,extra_field_len,SEEK_CUR); //skip past the extra field
+        uint16_t extra_field_len = read_unaligned<uint16_t>(&local_header[28]);
+        std::vector<char> extra_field(extra_field_len);
+        if(extra_field_len > 0) {
+            size_t efield_res = fread(&extra_field[0],sizeof(char),extra_field_len,fp);
+            if(efield_res != extra_field_len)
+                throw std::runtime_error("npz_load: failed fread");
+        }
         
-        uint16_t compr_method = *reinterpret_cast<uint16_t*>(&local_header[0]+8);
-        uint32_t compr_bytes = *reinterpret_cast<uint32_t*>(&local_header[0]+18);
-        uint32_t uncompr_bytes = *reinterpret_cast<uint32_t*>(&local_header[0]+22);
+        uint16_t compr_method = read_unaligned<uint16_t>(&local_header[0]+8);
+        uint32_t compr_bytes = read_unaligned<uint32_t>(&local_header[0]+18);
+        uint32_t uncompr_bytes = read_unaligned<uint32_t>(&local_header[0]+22);
+
+        // ZIP64 support: if sizes are 0xFFFFFFFF, read from extra field
+        parse_zip64_sizes(extra_field, compr_bytes, uncompr_bytes);
 
         if(vname == varname) {
             NpyArray array  = (compr_method == 0) ? load_the_npy_file(fp) : load_the_npz_array(fp,compr_bytes,uncompr_bytes);
@@ -312,9 +357,8 @@ cnpy::NpyArray cnpy::npz_load(std::string fname, std::string varname) {
             return array;
         }
         else {
-            //skip past the data
-            uint32_t size = *(uint32_t*) &local_header[22];
-            fseek(fp,size,SEEK_CUR);
+            //skip past the data (use compr_bytes for compressed data)
+            fseek(fp,compr_bytes,SEEK_CUR);
         }
     }
 
@@ -335,6 +379,5 @@ cnpy::NpyArray cnpy::npy_load(std::string fname) {
     fclose(fp);
     return arr;
 }
-
 
 
