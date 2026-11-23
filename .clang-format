@@ -1,0 +1,20 @@
+---
+BasedOnStyle: LLVM
+IndentWidth: 4
+ColumnLimit: 120
+AccessModifierOffset: -4
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortCaseLabelsOnASingleLine: true
+AlwaysBreakTemplateDeclarations: Yes
+BreakConstructorInitializers: BeforeColon
+IndentCaseLabels: false
+IndentRequiresClause: true
+RequiresClausePosition: OwnLine
+PointerAlignment: Left
+SpaceBeforeCpp11BracedList: false
+Cpp11BracedListStyle: true
+FixNamespaceComments: true
+SortIncludes: true
+IncludeBlocks: Preserve
+...

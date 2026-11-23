@@ -1,0 +1,11 @@
+build/
+/out/
+/cmake-build-*/
+CMakeUserPresets.json
+compile_commands.json
+.cache/
+.vscode/
+.idea/
+__pycache__/
+*.npy
+*.npz

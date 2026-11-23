@@ -1,0 +1,132 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux GCC 14
+            os: ubuntu-24.04
+            cc: gcc-14
+            cxx: g++-14
+            build_type: Release
+            shared: "False"
+          - name: Linux Clang 18 (shared)
+            os: ubuntu-24.04
+            cc: clang-18
+            cxx: clang++-18
+            build_type: Release
+            shared: "True"
+          - name: Linux GCC ASan+UBSan
+            os: ubuntu-24.04
+            cc: gcc-14
+            cxx: g++-14
+            build_type: Debug
+            shared: "False"
+            cmake_args: -DCNPY_ENABLE_SANITIZERS=ON
+          - name: macOS Apple Clang
+            os: macos-latest
+            build_type: Release
+            shared: "False"
+          - name: Windows MSVC
+            os: windows-latest
+            build_type: Release
+            shared: "False"
+          - name: Windows MSVC (shared)
+            os: windows-latest
+            build_type: Release
+            shared: "True"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select compiler
+        if: matrix.cxx != ''
+        run: |
+          echo "CC=${{ matrix.cc }}" >> "$GITHUB_ENV"
+          echo "CXX=${{ matrix.cxx }}" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Conan and NumPy
+        run: python -m pip install "conan>=2.0" numpy
+
+      - name: Conan profile
+        run: |
+          conan profile detect --force
+          conan profile show
+
+      - name: Cache Conan packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.conan2/p
+          key: conan-${{ matrix.os }}-${{ matrix.cxx || 'default' }}-${{ matrix.build_type }}-${{ matrix.shared }}-${{ hashFiles('conanfile.py') }}
+
+      - name: Install dependencies
+        run: >
+          conan install . --build=missing
+          -s build_type=${{ matrix.build_type }}
+          -s compiler.cppstd=20
+          -o "&:shared=${{ matrix.shared }}"
+
+      - name: Configure
+        run: |
+          # Multi-config generators (Visual Studio) name the configure preset "conan-default".
+          preset=conan-$(echo "${{ matrix.build_type }}" | tr '[:upper:]' '[:lower:]')
+          if [[ "$RUNNER_OS" == "Windows" ]]; then configure_preset=conan-default; else configure_preset=$preset; fi
+          echo "PRESET=$preset" >> "$GITHUB_ENV"
+          # -Werror on GCC/Clang; MSVC warnings are reported but not fatal.
+          if [[ "$RUNNER_OS" == "Windows" ]]; then werror=OFF; else werror=ON; fi
+          cmake --preset "$configure_preset" \
+            -DCNPY_WARNINGS_AS_ERRORS=$werror \
+            -DCNPY_BUILD_EXAMPLES=ON \
+            -DCNPY_BUILD_BENCHMARKS=ON \
+            -DPython3_EXECUTABLE="$(python -c 'import sys; print(sys.executable)')" \
+            ${{ matrix.cmake_args }}
+
+      - name: Build
+        run: cmake --build --preset "$PRESET" --parallel
+
+      - name: Test (unit + NumPy interop)
+        run: ctest --preset "$PRESET" --output-on-failure
+
+  conan-create:
+    name: Conan package
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install "conan>=2.0" numpy
+      - run: conan profile detect --force
+      - name: conan create (builds, tests and runs test_package)
+        run: conan create . --build=missing -s compiler.cppstd=20
+
+  format:
+    name: clang-format
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check formatting
+        run: |
+          find include src tests examples bench test_package \( -name '*.hpp' -o -name '*.cpp' \) -print0 \
+            | xargs -0 clang-format-18 --dry-run --Werror
